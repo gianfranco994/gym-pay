@@ -1105,6 +1105,7 @@ tbody tr:last-child td {
   display: flex;
   gap: var(--space-sm);
   flex-shrink: 0;
+  flex-wrap: wrap;
 }
 
 .member-countdown {
@@ -1442,6 +1443,7 @@ tbody tr:last-child td {
   .member-actions {
     width: 100%;
     justify-content: center;
+    flex-wrap: wrap;
   }
 
   .modal {
