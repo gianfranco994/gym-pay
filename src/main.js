@@ -16,6 +16,9 @@ import { render as renderNewPayment } from './pages/new-payment.js';
 import { render as renderReports } from './pages/reports.js';
 import { render as renderSettings } from './pages/settings.js';
 import { render as renderLogin } from './pages/login.js';
+import { render as renderReceipt } from './pages/receipt.js';
+import { render as renderClientPortal } from './pages/client-portal.js';
+import { render as renderPending } from './pages/pending.js';
 
 /**
  * Initialize the application
@@ -33,6 +36,9 @@ async function init() {
     route('reports', renderReports);
     route('settings', renderSettings);
     route('login', renderLogin);
+    route('receipt', renderReceipt);
+    route('portal', renderClientPortal);
+    route('pending', renderPending);
 
     // Render sidebar
     await renderSidebar((routePath) => navigate(routePath));

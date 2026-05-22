@@ -8,6 +8,7 @@ import {
   getExpiredMembers,
   getMonthlyAnalytics,
   getAllPayments,
+  getPendingPayments
 } from '../db/payments.js';
 import { formatAmount, getCurrency, setCurrency } from '../utils/currency.js';
 import {
@@ -67,6 +68,7 @@ export async function render(container) {
     expiringMembers,
     expiredMembers,
     allPayments,
+    pendingPayments,
   ] = await Promise.all([
     getMonthlyAnalytics(currentMonth, currentYear),
     getMemberCount(),
@@ -74,6 +76,7 @@ export async function render(container) {
     getExpiringMembers(3),
     getExpiredMembers(),
     getAllPayments(),
+    getPendingPayments(),
   ]);
 
   // Last 10 payments
@@ -120,6 +123,19 @@ export async function render(container) {
           <button class="currency-option ${currency === 'usd' ? 'active' : ''}" data-currency="usd">USD</button>
         </div>
       </div>
+
+      ${pendingPayments.length > 0 ? `
+      <!-- Pending Payments Alert -->
+      <div class="card" style="background: var(--bg-hover); border-left: 4px solid var(--text-yellow); margin-bottom: var(--space-xl);">
+        <div class="card-body" style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-md);">
+          <div>
+            <h3 style="margin: 0 0 5px 0; color: var(--text-primary); font-size: 16px;">Hay ${pendingPayments.length} pago(s) pendiente(s) de aprobación</h3>
+            <p class="text-muted" style="margin: 0; font-size: 14px;">Revisa las transferencias reportadas por los clientes.</p>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="location.hash='#/pending'">Revisar Pagos</button>
+        </div>
+      </div>
+      ` : ''}
 
       <!-- Stat Cards -->
       <div class="stats-grid">

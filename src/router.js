@@ -73,7 +73,8 @@ async function handleRoute() {
 
   // Auth Check
   const isAuthenticated = localStorage.getItem('gympay_auth') === 'true';
-  if (!isAuthenticated && path !== 'login') {
+  const publicRoutes = ['login', 'receipt', 'portal'];
+  if (!isAuthenticated && !publicRoutes.includes(path)) {
     window.location.hash = '#/login';
     return;
   }

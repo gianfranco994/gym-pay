@@ -19,8 +19,8 @@ async function getMembersWithLatestPayment() {
   if (memErr) throw memErr;
 
   // We could fetch only latest payments, but since dataset is small we can just get all payments
-  // and sort them out, or we can use Supabase order/limit. Let's get all payments to replicate idb behavior easily.
-  const { data: allPayments, error: payErr } = await supabase.from('payments').select('*');
+  // and sort them out. We only care about approved payments for membership status.
+  const { data: allPayments, error: payErr } = await supabase.from('payments').select('*').eq('estado_pago', 'aprobado');
   if (payErr) throw payErr;
 
   const latestMap = new Map();
@@ -51,6 +51,7 @@ export async function addPayment(data) {
     banco: data.banco ?? null,
     referencia: data.referencia ?? null,
     concepto: data.concepto ?? 'mensualidad',
+    estado_pago: data.estado_pago ?? 'aprobado',
     notas: data.notas ?? '',
     createdAt: now,
   };
@@ -63,8 +64,10 @@ export async function addPayment(data) {
   const { data: result, error: payErr } = await supabase.from('payments').insert(payment).select('id').single();
   if (payErr) throw payErr;
 
-  const { error: updErr } = await supabase.from('members').update({ estado: 'activo' }).eq('id', payment.memberId);
-  if (updErr) throw updErr;
+  if (payment.estado_pago === 'aprobado') {
+    const { error: updErr } = await supabase.from('members').update({ estado: 'activo' }).eq('id', payment.memberId);
+    if (updErr) throw updErr;
+  }
 
   return result.id;
 }
@@ -88,6 +91,7 @@ export async function getLatestPayment(memberId) {
     .from('payments')
     .select('*')
     .eq('memberId', memberId)
+    .eq('estado_pago', 'aprobado')
     .order('fechaPago', { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -99,9 +103,10 @@ export async function getLatestPayment(memberId) {
 export async function getPaymentsByDateRange(startDate, endDate) {
   const { data, error } = await supabase
     .from('payments')
-    .select('*')
+    .select('*, members(nombre, apellido, cedula)')
     .gte('fechaPago', startDate)
     .lte('fechaPago', endDate)
+    .eq('estado_pago', 'aprobado')
     .order('fechaPago', { ascending: false });
 
   if (error) return [];
@@ -163,9 +168,34 @@ export async function getCustomAnalytics(startDate, endDate) {
 }
 
 export async function getAllPayments() {
-  const { data, error } = await supabase.from('payments').select('*').order('fechaPago', { ascending: false });
+  const { data, error } = await supabase.from('payments').select('*').eq('estado_pago', 'aprobado').order('fechaPago', { ascending: false });
   if (error) return [];
   return data;
+}
+
+export async function getPayment(paymentId) {
+  const { data, error } = await supabase.from('payments').select('*, members(nombre, apellido, cedula)').eq('id', paymentId).single();
+  if (error) return null;
+  return data;
+}
+
+export async function getPendingPayments() {
+  const { data, error } = await supabase.from('payments').select('*, members(nombre, apellido, cedula)').eq('estado_pago', 'pendiente').order('createdAt', { ascending: false });
+  if (error) return [];
+  return data;
+}
+
+export async function approvePayment(paymentId) {
+  const { data: pay, error: payErr } = await supabase.from('payments').update({ estado_pago: 'aprobado' }).eq('id', paymentId).select('memberId').single();
+  if (payErr) throw payErr;
+  if (pay && pay.memberId) {
+    await supabase.from('members').update({ estado: 'activo' }).eq('id', pay.memberId);
+  }
+}
+
+export async function rejectPayment(paymentId) {
+  const { error } = await supabase.from('payments').update({ estado_pago: 'rechazado' }).eq('id', paymentId);
+  if (error) throw error;
 }
 
 async function computeAnalytics(startDate, endDate) {

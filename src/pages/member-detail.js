@@ -111,6 +111,7 @@ export async function render(container, memberIdStr) {
                 <th>Banco / Ref</th>
                 <th>Vencimiento</th>
                 <th>Días</th>
+                <th>Recibo</th>
               </tr>
             </thead>
             <tbody>
@@ -126,6 +127,12 @@ export async function render(container, memberIdStr) {
                   <td>${p.metodoPago === 'pagoMovil' ? `${p.banco} - *${p.referencia}` : '—'}</td>
                   <td>${formatDate(p.fechaVencimiento)}</td>
                   <td>${p.diasPlan}</td>
+                  <td>
+                    <div style="display: flex; gap: var(--space-xs);">
+                      <button class="btn btn-ghost btn-icon sm action-receipt" title="Ver Recibo" data-id="${p.id}">📄</button>
+                      <button class="btn btn-ghost btn-icon sm action-share-receipt" title="Enviar Recibo por WhatsApp" data-id="${p.id}" data-phone="${member.telefono}">📲</button>
+                    </div>
+                  </td>
                 </tr>
               `).join('')}
             </tbody>
@@ -155,6 +162,28 @@ export async function render(container, memberIdStr) {
       telefono: member.telefono, 
       nombre: `${member.nombre} ${member.apellido}`, 
       fechaVencimiento: expirationDate 
+    });
+  });
+
+  // Receipt Actions
+  document.querySelectorAll('.action-receipt').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const pId = e.currentTarget.dataset.id;
+      window.open(`#/receipt/${pId}`, '_blank');
+    });
+  });
+
+  document.querySelectorAll('.action-share-receipt').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const pId = e.currentTarget.dataset.id;
+      const phone = e.currentTarget.dataset.phone;
+      if (!phone) {
+        showToast('El miembro no tiene número de teléfono', 'error');
+        return;
+      }
+      const receiptUrl = `${window.location.origin}${window.location.pathname}#/receipt/${pId}`;
+      const msg = encodeURIComponent(`¡Hola! Tu pago ha sido procesado exitosamente. Puedes ver y descargar tu recibo digital aquí: ${receiptUrl}`);
+      window.open(`https://wa.me/${phone.replace(/\\D/g,'')}?text=${msg}`, '_blank');
     });
   });
 

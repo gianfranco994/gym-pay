@@ -4,7 +4,7 @@
 
 import { fetchExchangeRate } from '../services/exchange-rate.js';
 import { formatRate, setRate } from '../utils/currency.js';
-import { getExpiringMembers, getExpiredMembers } from '../db/payments.js';
+import { getExpiringMembers, getExpiredMembers, getPendingPayments } from '../db/payments.js';
 
 let currentRoute = 'dashboard';
 
@@ -19,11 +19,14 @@ export async function renderSidebar(navigate) {
   // Get counts for badges
   let expiringCount = 0;
   let expiredCount = 0;
+  let pendingCount = 0;
   try {
     const expiring = await getExpiringMembers(3);
     const expired = await getExpiredMembers();
+    const pending = await getPendingPayments();
     expiringCount = expiring.length;
     expiredCount = expired.length;
+    pendingCount = pending.length;
   } catch { /* ignore */ }
 
   const alertCount = expiringCount + expiredCount;
@@ -48,6 +51,11 @@ export async function renderSidebar(navigate) {
       <button class="nav-item ${currentRoute === 'new-payment' ? 'active' : ''}" data-route="new-payment">
         <span class="nav-item-icon">💳</span>
         <span>Registrar Pago</span>
+      </button>
+      <button class="nav-item ${currentRoute === 'pending' ? 'active' : ''}" data-route="pending">
+        <span class="nav-item-icon">⏳</span>
+        <span>Aprobaciones</span>
+        ${pendingCount > 0 ? `<span class="nav-item-badge" style="background: var(--text-yellow); color: #000;">${pendingCount}</span>` : ''}
       </button>
 
       <div class="nav-section-label" style="margin-top: var(--space-md)">Análisis</div>

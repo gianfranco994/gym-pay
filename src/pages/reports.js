@@ -1,4 +1,5 @@
 import { getCustomAnalytics, getPaymentsByDateRange } from '../db/payments.js';
+import { exportPaymentsToCSV } from '../utils/export.js';
 import { formatAmount } from '../utils/currency.js';
 import { todayISO, toInputDate, formatDateShort } from '../utils/dates.js';
 import Chart from 'chart.js/auto';
@@ -6,6 +7,7 @@ import Chart from 'chart.js/auto';
 let trendChartInstance = null;
 let methodChartInstance = null;
 let compareChartInstance = null;
+let currentPaymentsList = [];
 
 // Helper to get date for X days ago
 function getDateDaysAgo(days) {
@@ -56,6 +58,10 @@ export async function render(container) {
       <button class="btn btn-ghost btn-sm preset-btn" data-preset="last-month">Mes pasado</button>
       <button class="btn btn-ghost btn-sm preset-btn" data-preset="3-months">Últimos 3 meses</button>
       <button class="btn btn-ghost btn-sm preset-btn" data-preset="year">Este año</button>
+      <div style="flex: 1;"></div>
+      <button id="btn-export-excel" class="btn btn-secondary btn-sm" style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 16px;">⬇️</span> Exportar a Excel
+      </button>
     </div>
 
     <div class="report-metrics">
@@ -125,6 +131,7 @@ export async function render(container) {
         getCustomAnalytics(start, end),
         getPaymentsByDateRange(start, end)
       ]);
+      currentPaymentsList = paymentsList;
       
       // Update Metrics
       document.getElementById('metric-income').textContent = formatAmount(analytics.totalBs, analytics.totalUsd);
@@ -252,6 +259,9 @@ export async function render(container) {
 
   // Event Listeners
   document.getElementById('btn-apply-dates').addEventListener('click', loadData);
+  document.getElementById('btn-export-excel').addEventListener('click', () => {
+    exportPaymentsToCSV(currentPaymentsList);
+  });
   
   document.querySelectorAll('.preset-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
