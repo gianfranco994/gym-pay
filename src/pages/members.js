@@ -1,7 +1,9 @@
 import { addMember, getAllMembers } from '../db/members.js';
-import { getLatestPayment } from '../db/payments.js';
-import { formatDate, daysRemainingText, getStatusBadge, todayISO } from '../utils/dates.js';
-import { openWhatsApp } from '../services/whatsapp.js';
+import { addPayment, getLatestPayment } from '../db/payments.js';
+import { getDB } from '../db/database.js';
+import { fetchExchangeRate } from '../services/exchange-rate.js';
+import { bsToUsd } from '../utils/currency.js';
+import { formatDate, daysRemainingText, getStatusBadge, todayISO, calculateExpiration } from '../utils/dates.js';
 import { showToast } from '../components/toast.js';
 import { showModal } from '../components/modal.js';
 import { navigate } from '../router.js';
@@ -89,7 +91,19 @@ export async function render(container) {
 
   const newMemberBtn = container.querySelector('#btn-new-member');
   if (newMemberBtn) {
-    newMemberBtn.addEventListener('click', () => {
+    newMemberBtn.addEventListener('click', async () => {
+      let precioMensual = 0;
+      let currentRate = 0;
+      try {
+        const db = await getDB();
+        const precioSetting = await db.get('settings', 'precioMensual');
+        if (precioSetting && precioSetting.value) precioMensual = precioSetting.value;
+        const rateData = await fetchExchangeRate();
+        if (rateData && rateData.rate) currentRate = rateData.rate;
+      } catch(e) {}
+
+      const banks = ['Banesco', 'Mercantil', 'Provincial', 'Venezuela', 'BNC', 'Bicentenario', 'Tesoro', 'Exterior', 'BOD', 'Bancamiga', 'Sofitasa', 'Plaza', 'Caroní', 'Del Sur', 'Fondo Común', 'Otro'];
+
       showModal({
         title: 'Nuevo Miembro',
         content: `
@@ -132,14 +146,94 @@ export async function render(container) {
               <label class="form-label">Fecha de Inscripción *</label>
               <input type="date" name="fechaInscripcion" class="form-input" required value="${todayISO()}">
             </div>
+
+            <hr style="margin: var(--space-md) 0; border: 0; border-top: 1px solid var(--border-subtle);">
+            
+            <label class="form-radio-option" style="margin-bottom: var(--space-md);">
+              <input type="checkbox" id="check-initial-payment" checked>
+              <strong>Registrar primer pago ahora (30 días)</strong>
+            </label>
+
+            <div id="initial-payment-section">
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">Monto (Bs) *</label>
+                  <input type="number" name="montoBs" class="form-input" min="1" step="0.01" value="${precioMensual || ''}">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Método de Pago *</label>
+                  <select name="metodoPago" id="metodo-select" class="form-select">
+                    <option value="pagoMovil">📱 Pago Móvil / Transferencia</option>
+                    <option value="efectivo">💵 Efectivo</option>
+                  </select>
+                </div>
+              </div>
+
+              <div id="datos-banco-modal" class="form-row">
+                <div class="form-group">
+                  <label class="form-label">Banco</label>
+                  <select name="banco" class="form-select">
+                    <option value="" disabled selected>Seleccione banco</option>
+                    ${banks.map(b => `<option value="${b}">${b}</option>`).join('')}
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Referencia (últimos 4 dígitos)</label>
+                  <input type="text" name="referencia" class="form-input" maxlength="4" pattern="\\d{4,}">
+                </div>
+              </div>
+            </div>
           </form>
         `,
         submitText: 'Guardar Miembro',
+        onMount: (modalBody) => {
+          const check = modalBody.querySelector('#check-initial-payment');
+          const section = modalBody.querySelector('#initial-payment-section');
+          const method = modalBody.querySelector('#metodo-select');
+          const bancoSection = modalBody.querySelector('#datos-banco-modal');
+          const bancoInput = modalBody.querySelector('[name="banco"]');
+          const refInput = modalBody.querySelector('[name="referencia"]');
+
+          check.addEventListener('change', (e) => {
+            section.style.display = e.target.checked ? 'block' : 'none';
+          });
+
+          method.addEventListener('change', (e) => {
+            if (e.target.value === 'pagoMovil') {
+              bancoSection.style.display = 'flex';
+              bancoSection.style.gap = 'var(--space-md)';
+              bancoInput.required = check.checked;
+              refInput.required = check.checked;
+            } else {
+              bancoSection.style.display = 'none';
+              bancoInput.required = false;
+              refInput.required = false;
+            }
+          });
+          method.dispatchEvent(new Event('change'));
+        },
         onSubmit: async (body) => {
           const form = body.querySelector('#new-member-form');
+          const check = body.querySelector('#check-initial-payment');
+          
+          if (check.checked) {
+             form.querySelector('[name="montoBs"]').required = true;
+             const method = form.querySelector('#metodo-select').value;
+             if (method === 'pagoMovil') {
+               form.querySelector('[name="banco"]').required = true;
+               form.querySelector('[name="referencia"]').required = true;
+             }
+          } else {
+             form.querySelector('[name="montoBs"]').required = false;
+             form.querySelector('[name="banco"]').required = false;
+             form.querySelector('[name="referencia"]').required = false;
+          }
+
           if (!form.reportValidity()) return false;
 
           const formData = new FormData(form);
+          const fechaInsc = formData.get('fechaInscripcion') || todayISO();
+
           const data = {
             nombre: formData.get('nombre'),
             apellido: formData.get('apellido'),
@@ -147,17 +241,39 @@ export async function render(container) {
             edad: parseInt(formData.get('edad'), 10),
             telefono: formData.get('telefono'),
             correo: formData.get('correo') || null,
-            fechaInscripcion: formData.get('fechaInscripcion') || todayISO()
+            fechaInscripcion: fechaInsc
           };
 
           try {
-            await addMember(data);
-            showToast('Miembro agregado exitosamente', 'success');
-            render(container); // Reload full view to fetch new member
+            const memberId = await addMember(data);
+            
+            if (check.checked) {
+              const montoBsVal = parseFloat(formData.get('montoBs'));
+              const paymentData = {
+                memberId: memberId,
+                montoBs: montoBsVal,
+                tasaUsd: currentRate,
+                montoUsd: bsToUsd(montoBsVal, currentRate),
+                fechaPago: fechaInsc,
+                fechaVencimiento: calculateExpiration(fechaInsc, 30),
+                diasPlan: 30,
+                metodoPago: formData.get('metodoPago'),
+                banco: formData.get('banco') || null,
+                referencia: formData.get('referencia') || null,
+                concepto: 'inscripcion',
+                notas: 'Pago inicial generado automáticamente.'
+              };
+              await addPayment(paymentData);
+              showToast('Miembro y pago registrados', 'success');
+            } else {
+              showToast('Miembro agregado exitosamente', 'success');
+            }
+            
+            render(container);
             return true;
           } catch (error) {
-            console.error('Error al agregar miembro:', error);
-            showToast(error.message || 'Error al agregar miembro', 'error');
+            console.error('Error:', error);
+            showToast(error.message || 'Error al procesar', 'error');
             return false;
           }
         }
