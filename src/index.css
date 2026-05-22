@@ -1444,6 +1444,14 @@ tbody tr:last-child td {
     width: 100%;
     justify-content: center;
     flex-wrap: wrap;
+    gap: var(--space-md);
+    margin-top: var(--space-md);
+  }
+
+  .member-actions .btn {
+    flex: 1;
+    min-width: 130px;
+    padding: 12px;
   }
 
   .modal {
