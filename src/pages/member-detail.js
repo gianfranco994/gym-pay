@@ -108,9 +108,9 @@ export async function render(container, memberIdStr) {
                 <th>Fecha Pago</th>
                 <th>Monto</th>
                 <th>Método</th>
-                <th>Banco / Ref</th>
-                <th>Vencimiento</th>
-                <th>Días</th>
+                <th class="hide-mobile">Banco / Ref</th>
+                <th class="hide-mobile">Vencimiento</th>
+                <th class="hide-mobile">Días</th>
                 <th>Recibo</th>
               </tr>
             </thead>
@@ -118,15 +118,18 @@ export async function render(container, memberIdStr) {
               ${payments.map(p => `
                 <tr>
                   <td>${formatDate(p.fechaPago)}</td>
-                  <td>${formatAmount(p.montoBs, p.montoUsd)}</td>
+                  <td><strong style="color: var(--status-active);">${formatAmount(p.montoBs, p.montoUsd)}</strong></td>
                   <td>
-                    <span class="badge ${p.metodoPago === 'pagoMovil' ? 'active' : 'warning'}">
+                    <span class="badge ${p.metodoPago === 'pagoMovil' ? 'active' : 'warning'}" style="font-size: 11px; padding: 2px 6px;">
                       ${p.metodoPago === 'pagoMovil' ? '📱 Pago Móvil' : '💵 Efectivo'}
                     </span>
+                    <div class="hide-desktop" style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+                      ${p.metodoPago === 'pagoMovil' ? `${p.banco} - *${p.referencia}` : ''}
+                    </div>
                   </td>
-                  <td>${p.metodoPago === 'pagoMovil' ? `${p.banco} - *${p.referencia}` : '—'}</td>
-                  <td>${formatDate(p.fechaVencimiento)}</td>
-                  <td>${p.diasPlan}</td>
+                  <td class="hide-mobile">${p.metodoPago === 'pagoMovil' ? `${p.banco} - *${p.referencia}` : '—'}</td>
+                  <td class="hide-mobile">${formatDate(p.fechaVencimiento)}</td>
+                  <td class="hide-mobile">${p.diasPlan}</td>
                   <td>
                     <div style="display: flex; gap: var(--space-xs);">
                       <button class="btn btn-ghost btn-icon sm action-receipt" title="Ver Recibo" data-id="${p.id}">📄</button>

@@ -1462,6 +1462,14 @@ tbody tr:last-child td {
   .mobile-menu-btn {
     display: flex !important;
   }
+
+  .hide-mobile {
+    display: none !important;
+  }
+  
+  .hide-desktop {
+    display: block !important;
+  }
 }
 
 @media (max-width: 480px) {
@@ -1530,3 +1538,4 @@ tbody tr:last-child td {
 .w-full { width: 100%; }
 .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+.hide-desktop { display: none; }
