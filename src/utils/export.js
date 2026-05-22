@@ -142,34 +142,34 @@ export function exportPaymentsToCSV(payments) {
   const headers = ['ID Recibo', 'Miembro', 'Cedula', 'Fecha Pago', 'Monto Bs', 'Monto USD', 'Metodo', 'Referencia/Banco', 'Concepto', 'Vencimiento'];
   
   const rows = payments.map(p => {
-    const memberName = p.members ? \`\${p.members.nombre} \${p.members.apellido}\` : 'Desconocido';
+    const memberName = p.members ? `${p.members.nombre} ${p.members.apellido}` : 'Desconocido';
     const cedula = p.members?.cedula || '';
     const fechaPago = p.fechaPago ? p.fechaPago.split('T')[0] : '';
     const vencimiento = p.fechaVencimiento ? p.fechaVencimiento.split('T')[0] : '';
-    const ref = p.metodoPago === 'pagoMovil' ? \`\${p.banco || ''} \${p.referencia || ''}\` : 'Efectivo';
+    const ref = p.metodoPago === 'pagoMovil' ? `${p.banco || ''} ${p.referencia || ''}` : 'Efectivo';
     
     return [
       p.id,
-      \`"\${memberName}"\`,
+      `"${memberName}"`,
       cedula,
       fechaPago,
       p.montoBs,
       p.montoUsd,
       p.metodoPago,
-      \`"\${ref.trim()}"\`,
+      `"${ref.trim()}"`,
       p.concepto,
       vencimiento
     ].join(',');
   });
 
-  const csvContent = headers.join(',') + '\\n' + rows.join('\\n');
+  const csvContent = headers.join(',') + '\n' + rows.join('\n');
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   
   const a = document.createElement('a');
   a.href = url;
   const date = new Date().toISOString().split('T')[0];
-  a.download = \`gympay-reporte-\${date}.csv\`;
+  a.download = `gympay-reporte-${date}.csv`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
