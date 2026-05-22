@@ -100,46 +100,48 @@ export async function render(container, memberIdStr) {
       <div class="card-header">
         <h3 class="card-title">Historial de Pagos</h3>
       </div>
-      <div class="card-body no-padding table-wrapper">
+      <div class="card-body no-padding">
         ${payments.length > 0 ? `
-          <table>
-            <thead>
-              <tr>
-                <th>Fecha Pago</th>
-                <th>Monto</th>
-                <th>Método</th>
-                <th class="hide-mobile">Banco / Ref</th>
-                <th class="hide-mobile">Vencimiento</th>
-                <th class="hide-mobile">Días</th>
-                <th>Recibo</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${payments.map(p => `
+          <div class="table-wrapper">
+            <table>
+              <thead>
                 <tr>
-                  <td>${formatDate(p.fechaPago)}</td>
-                  <td><strong style="color: var(--status-active);">${formatAmount(p.montoBs, p.montoUsd)}</strong></td>
-                  <td>
-                    <span class="badge ${p.metodoPago === 'pagoMovil' ? 'active' : 'warning'}" style="font-size: 11px; padding: 2px 6px;">
-                      ${p.metodoPago === 'pagoMovil' ? '📱 Pago Móvil' : '💵 Efectivo'}
-                    </span>
-                    <div class="hide-desktop" style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
-                      ${p.metodoPago === 'pagoMovil' ? `${p.banco} - *${p.referencia}` : ''}
-                    </div>
-                  </td>
-                  <td class="hide-mobile">${p.metodoPago === 'pagoMovil' ? `${p.banco} - *${p.referencia}` : '—'}</td>
-                  <td class="hide-mobile">${formatDate(p.fechaVencimiento)}</td>
-                  <td class="hide-mobile">${p.diasPlan}</td>
-                  <td>
-                    <div style="display: flex; gap: var(--space-xs);">
-                      <button class="btn btn-ghost btn-icon sm action-receipt" title="Ver Recibo" data-id="${p.id}">📄</button>
-                      <button class="btn btn-ghost btn-icon sm action-share-receipt" title="Enviar Recibo por WhatsApp" data-id="${p.id}" data-phone="${member.telefono}">📲</button>
-                    </div>
-                  </td>
+                  <th>Fecha Pago</th>
+                  <th>Monto</th>
+                  <th>Método</th>
+                  <th class="hide-mobile">Banco / Ref</th>
+                  <th class="hide-mobile">Vencimiento</th>
+                  <th class="hide-mobile">Días</th>
+                  <th>Recibo</th>
                 </tr>
-              `).join('')}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                ${payments.map(p => `
+                  <tr>
+                    <td>${formatDate(p.fechaPago)}</td>
+                    <td><strong style="color: var(--status-active);">${formatAmount(p.montoBs, p.montoUsd)}</strong></td>
+                    <td>
+                      <span class="badge ${p.metodoPago === 'pagoMovil' ? 'active' : 'warning'}" style="font-size: 11px; padding: 2px 6px;">
+                        ${p.metodoPago === 'pagoMovil' ? '📱 Pago Móvil' : '💵 Efectivo'}
+                      </span>
+                      <div class="hide-desktop" style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+                        ${p.metodoPago === 'pagoMovil' ? `${p.banco} - *${p.referencia}` : ''}
+                      </div>
+                    </td>
+                    <td class="hide-mobile">${p.metodoPago === 'pagoMovil' ? `${p.banco} - *${p.referencia}` : '—'}</td>
+                    <td class="hide-mobile">${formatDate(p.fechaVencimiento)}</td>
+                    <td class="hide-mobile">${p.diasPlan}</td>
+                    <td>
+                      <div style="display: flex; gap: var(--space-xs);">
+                        <button class="btn btn-ghost btn-icon sm action-receipt" title="Ver Recibo" data-id="${p.id}">📄</button>
+                        <button class="btn btn-ghost btn-icon sm action-share-receipt" title="Enviar Recibo por WhatsApp" data-id="${p.id}" data-phone="${member.telefono}">📲</button>
+                      </div>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
         ` : `
           <div class="empty-state" style="padding: var(--space-xl);">
             <div class="empty-state-icon">💸</div>
