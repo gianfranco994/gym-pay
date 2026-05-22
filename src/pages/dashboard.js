@@ -377,7 +377,7 @@ export async function render(container) {
     link.addEventListener('click', (e) => {
       e.preventDefault();
       const id = link.dataset.id;
-      if (id) navigate('member-detail', { id });
+      if (id) navigate(`member-detail/${id}`);
     });
   });
 }

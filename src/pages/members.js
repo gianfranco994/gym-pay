@@ -4,6 +4,7 @@ import { getDB } from '../db/database.js';
 import { fetchExchangeRate } from '../services/exchange-rate.js';
 import { bsToUsd } from '../utils/currency.js';
 import { formatDate, daysRemainingText, getStatusBadge, todayISO, calculateExpiration } from '../utils/dates.js';
+import { toTitleCase } from '../utils/text.js';
 import { showToast } from '../components/toast.js';
 import { showModal } from '../components/modal.js';
 import { navigate } from '../router.js';
@@ -235,12 +236,12 @@ export async function render(container) {
           const fechaInsc = formData.get('fechaInscripcion') || todayISO();
 
           const data = {
-            nombre: formData.get('nombre'),
-            apellido: formData.get('apellido'),
-            cedula: formData.get('cedula') || null,
+            nombre: toTitleCase(formData.get('nombre').trim()),
+            apellido: toTitleCase(formData.get('apellido').trim()),
+            cedula: formData.get('cedula') ? formData.get('cedula').trim() : null,
             edad: parseInt(formData.get('edad'), 10),
-            telefono: formData.get('telefono'),
-            correo: formData.get('correo') || null,
+            telefono: formData.get('telefono').trim(),
+            correo: formData.get('correo') ? formData.get('correo').trim().toLowerCase() : null,
             fechaInscripcion: fechaInsc
           };
 
