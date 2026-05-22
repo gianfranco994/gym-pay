@@ -87,7 +87,11 @@ export async function renderSidebar(navigate) {
   sidebar.querySelectorAll('.nav-item[data-route]').forEach(item => {
     item.addEventListener('click', () => {
       const route = item.dataset.route;
-      if (route) navigate(route);
+      if (route) {
+        navigate(route);
+        // Automatically close the sidebar on mobile when an option is clicked
+        sidebar.classList.remove('open');
+      }
     });
   });
 
