@@ -3,6 +3,7 @@ import { getPaymentsByMember, getLatestPayment } from '../db/payments.js';
 import { formatDate, daysRemainingText, daysRemaining, getMembershipStatus, toInputDate } from '../utils/dates.js';
 import { formatAmount } from '../utils/currency.js';
 import { toTitleCase } from '../utils/text.js';
+import { isValidVenezuelanPhone } from '../db/database.js';
 import { openWhatsApp } from '../services/whatsapp.js';
 import { showToast } from '../components/toast.js';
 import { showModal, confirmDialog } from '../components/modal.js';
@@ -260,12 +261,18 @@ export async function render(container, memberIdStr) {
         if (!form.reportValidity()) return false;
 
         const formData = new FormData(form);
+        const telefono = formData.get('telefono').trim();
+        if (telefono && !isValidVenezuelanPhone(telefono)) {
+          showToast('El teléfono debe tener formato venezolano: 04XX-XXXXXXX', 'error');
+          return false;
+        }
+
         const data = {
           nombre: toTitleCase(formData.get('nombre').trim()),
           apellido: toTitleCase(formData.get('apellido').trim()),
           cedula: formData.get('cedula') ? formData.get('cedula').trim() : null,
           edad: parseInt(formData.get('edad'), 10),
-          telefono: formData.get('telefono').trim(),
+          telefono,
           correo: formData.get('correo') ? formData.get('correo').trim().toLowerCase() : null,
           fechaInscripcion: formData.get('fechaInscripcion')
         };

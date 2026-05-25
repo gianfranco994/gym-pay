@@ -13,18 +13,25 @@ function addDays(days) {
   return d;
 }
 
+/**
+ * Fetch all members with their latest approved payment in two queries (not N+1).
+ * @returns {Promise<Array<{member, payment}>>}
+ */
 async function getMembersWithLatestPayment() {
-  // Fetch all members
+  // Single query for all members
   const { data: members, error: memErr } = await supabase.from('members').select('*');
   if (memErr) throw memErr;
 
-  // We could fetch only latest payments, but since dataset is small we can just get all payments
-  // and sort them out. We only care about approved payments for membership status.
-  const { data: allPayments, error: payErr } = await supabase.from('payments').select('*').eq('estado_pago', 'aprobado');
+  // Single query for all approved payments — only fetch fields we need
+  const { data: allPayments, error: payErr } = await supabase
+    .from('payments')
+    .select('id, memberId, fechaPago, fechaVencimiento, montoBs, montoUsd, metodoPago')
+    .eq('estado_pago', 'aprobado');
   if (payErr) throw payErr;
 
+  // Build a map of memberId -> latest payment in O(n) instead of N queries
   const latestMap = new Map();
-  for (const p of allPayments) {
+  for (const p of (allPayments || [])) {
     const current = latestMap.get(p.memberId);
     if (!current || new Date(p.fechaPago) > new Date(current.fechaPago)) {
       latestMap.set(p.memberId, p);
@@ -36,6 +43,33 @@ async function getMembersWithLatestPayment() {
     .map((m) => ({ member: m, payment: latestMap.get(m.id) }));
 }
 
+/**
+ * Fetch all members with latest payment — cached per render cycle to avoid
+ * duplicate calls from getExpiringMembers / getExpiredMembers / getActiveMembers.
+ */
+let _membersWithPaymentCache = null;
+let _membersWithPaymentCacheTime = 0;
+const CACHE_TTL = 60_000; // 1 minute
+
+async function getMembersWithLatestPaymentCached() {
+  const now = Date.now();
+  if (_membersWithPaymentCache && now - _membersWithPaymentCacheTime < CACHE_TTL) {
+    return _membersWithPaymentCache;
+  }
+  _membersWithPaymentCache = await getMembersWithLatestPayment();
+  _membersWithPaymentCacheTime = now;
+  return _membersWithPaymentCache;
+}
+
+/** Invalidate the cache (call after adding/approving payments) */
+export function invalidateMemberPaymentCache() {
+  _membersWithPaymentCache = null;
+  _membersWithPaymentCacheTime = 0;
+}
+
+/**
+ * Add a new payment record.
+ */
 export async function addPayment(data) {
   const now = new Date().toISOString();
 
@@ -69,9 +103,15 @@ export async function addPayment(data) {
     if (updErr) throw updErr;
   }
 
+  // Invalidate cache so next load is fresh
+  invalidateMemberPaymentCache();
+
   return result.id;
 }
 
+/**
+ * Get all payments for a specific member.
+ */
 export async function getPaymentsByMember(memberId) {
   const { data, error } = await supabase
     .from('payments')
@@ -86,6 +126,9 @@ export async function getPaymentsByMember(memberId) {
   return data;
 }
 
+/**
+ * Get the latest approved payment for a member.
+ */
 export async function getLatestPayment(memberId) {
   const { data, error } = await supabase
     .from('payments')
@@ -100,6 +143,9 @@ export async function getLatestPayment(memberId) {
   return data;
 }
 
+/**
+ * Get approved payments in a date range with member info.
+ */
 export async function getPaymentsByDateRange(startDate, endDate) {
   const { data, error } = await supabase
     .from('payments')
@@ -113,9 +159,12 @@ export async function getPaymentsByDateRange(startDate, endDate) {
   return data;
 }
 
+/**
+ * Get members whose membership expires within `days` days.
+ */
 export async function getExpiringMembers(days) {
   try {
-    const pairs = await getMembersWithLatestPayment();
+    const pairs = await getMembersWithLatestPaymentCached();
     const today = startOfToday();
     const limit = addDays(days);
 
@@ -129,9 +178,12 @@ export async function getExpiringMembers(days) {
   }
 }
 
+/**
+ * Get members whose membership has expired.
+ */
 export async function getExpiredMembers() {
   try {
-    const pairs = await getMembersWithLatestPayment();
+    const pairs = await getMembersWithLatestPaymentCached();
     const today = startOfToday();
 
     return pairs.filter(({ payment }) => {
@@ -143,9 +195,12 @@ export async function getExpiredMembers() {
   }
 }
 
+/**
+ * Get members with active membership.
+ */
 export async function getActiveMembers() {
   try {
-    const pairs = await getMembersWithLatestPayment();
+    const pairs = await getMembersWithLatestPaymentCached();
     const today = startOfToday();
 
     return pairs.filter(({ payment }) => {
@@ -157,47 +212,104 @@ export async function getActiveMembers() {
   }
 }
 
+/**
+ * Get analytics for a specific month.
+ */
 export async function getMonthlyAnalytics(month, year) {
   const startDate = new Date(year, month - 1, 1).toISOString();
   const endDate = new Date(year, month, 0, 23, 59, 59, 999).toISOString();
   return await computeAnalytics(startDate, endDate);
 }
 
+/**
+ * Get analytics for a custom date range.
+ */
 export async function getCustomAnalytics(startDate, endDate) {
   return await computeAnalytics(startDate, endDate);
 }
 
+/**
+ * Get all recent approved payments (limited to 100 for performance).
+ */
 export async function getAllPayments() {
-  const { data, error } = await supabase.from('payments').select('*').eq('estado_pago', 'aprobado').order('fechaPago', { ascending: false });
+  const { data, error } = await supabase
+    .from('payments')
+    .select('*')
+    .eq('estado_pago', 'aprobado')
+    .order('fechaPago', { ascending: false })
+    .limit(100); // Prevent downloading thousands of records
   if (error) return [];
   return data;
 }
 
+/**
+ * Get a single payment with member info.
+ */
 export async function getPayment(paymentId) {
   const { data, error } = await supabase.from('payments').select('*, members(nombre, apellido, cedula)').eq('id', paymentId).single();
   if (error) return null;
   return data;
 }
 
+/**
+ * Get all pending payments (awaiting approval) with member info.
+ */
 export async function getPendingPayments() {
-  const { data, error } = await supabase.from('payments').select('*, members(nombre, apellido, cedula)').eq('estado_pago', 'pendiente').order('createdAt', { ascending: false });
+  const { data, error } = await supabase
+    .from('payments')
+    .select('*, members(nombre, apellido, cedula)')
+    .eq('estado_pago', 'pendiente')
+    .order('createdAt', { ascending: false });
   if (error) return [];
   return data;
 }
 
+/**
+ * Check if a member already has a pending payment (prevents duplicates).
+ * @param {number} memberId
+ * @returns {Promise<boolean>}
+ */
+export async function hasPendingPayment(memberId) {
+  const { data, error } = await supabase
+    .from('payments')
+    .select('id')
+    .eq('memberId', memberId)
+    .eq('estado_pago', 'pendiente')
+    .limit(1)
+    .maybeSingle();
+  if (error) return false;
+  return !!data;
+}
+
+/**
+ * Approve a pending payment and update member status.
+ */
 export async function approvePayment(paymentId) {
-  const { data: pay, error: payErr } = await supabase.from('payments').update({ estado_pago: 'aprobado' }).eq('id', paymentId).select('memberId').single();
+  const { data: pay, error: payErr } = await supabase
+    .from('payments')
+    .update({ estado_pago: 'aprobado' })
+    .eq('id', paymentId)
+    .select('memberId, fechaVencimiento')
+    .single();
   if (payErr) throw payErr;
+
   if (pay && pay.memberId) {
     await supabase.from('members').update({ estado: 'activo' }).eq('id', pay.memberId);
   }
+  invalidateMemberPaymentCache();
 }
 
+/**
+ * Reject a pending payment.
+ */
 export async function rejectPayment(paymentId) {
   const { error } = await supabase.from('payments').update({ estado_pago: 'rechazado' }).eq('id', paymentId);
   if (error) throw error;
 }
 
+/**
+ * Compute analytics for a date range.
+ */
 async function computeAnalytics(startDate, endDate) {
   const payments = await getPaymentsByDateRange(startDate, endDate);
   
@@ -211,10 +323,18 @@ async function computeAnalytics(startDate, endDate) {
     efectivo: { count: 0, total: 0 },
   };
 
-  const { data: allMembers, error } = await supabase.from('members').select('id, fechaInscripcion');
+  // Fetch member inscription dates in one query
+  const memberIds = [...new Set(payments.map(p => p.memberId))];
   const memberCache = new Map();
-  if (!error && allMembers) {
-    allMembers.forEach(m => memberCache.set(m.id, m));
+
+  if (memberIds.length > 0) {
+    const { data: allMembers, error } = await supabase
+      .from('members')
+      .select('id, fechaInscripcion')
+      .in('id', memberIds);
+    if (!error && allMembers) {
+      allMembers.forEach(m => memberCache.set(m.id, m));
+    }
   }
 
   for (const p of payments) {
@@ -244,19 +364,5 @@ async function computeAnalytics(startDate, endDate) {
     newMembers,
     renewals,
     byMethod,
-  };
-}
-
-function emptyAnalytics() {
-  return {
-    totalBs: 0,
-    totalUsd: 0,
-    totalPayments: 0,
-    newMembers: 0,
-    renewals: 0,
-    byMethod: {
-      pagoMovil: { count: 0, total: 0 },
-      efectivo: { count: 0, total: 0 },
-    },
   };
 }

@@ -1,5 +1,10 @@
 import { supabase } from '../services/supabase.js';
 
+/**
+ * Add a new member to the database.
+ * @param {Object} data
+ * @returns {Promise<number>} The new member's ID
+ */
 export async function addMember(data) {
   const now = new Date().toISOString();
   
@@ -31,6 +36,9 @@ export async function addMember(data) {
   return result.id;
 }
 
+/**
+ * Update an existing member.
+ */
 export async function updateMember(id, data) {
   if (data.cedula) {
     const { data: existing } = await supabase.from('members').select('id').eq('cedula', data.cedula).neq('id', id).maybeSingle();
@@ -47,6 +55,9 @@ export async function updateMember(id, data) {
   return result;
 }
 
+/**
+ * Toggle active/inactive status.
+ */
 export async function toggleMemberStatus(id) {
   const { data: member, error: fetchErr } = await supabase.from('members').select('estado').eq('id', id).single();
   if (fetchErr) throw fetchErr;
@@ -58,6 +69,9 @@ export async function toggleMemberStatus(id) {
   return updated;
 }
 
+/**
+ * Get a single member by ID.
+ */
 export async function getMember(id) {
   const { data, error } = await supabase.from('members').select('*').eq('id', id).maybeSingle();
   if (error) {
@@ -67,6 +81,10 @@ export async function getMember(id) {
   return data;
 }
 
+/**
+ * Get all members, optionally filtered.
+ * Uses server-side filtering for performance with large datasets.
+ */
 export async function getAllMembers(filters = {}) {
   let query = supabase.from('members').select('*');
 
@@ -74,40 +92,44 @@ export async function getAllMembers(filters = {}) {
     query = query.eq('estado', filters.estado);
   }
 
-  // Text search on the client side to avoid complex ilike with multiple columns,
-  // or we could use Supabase OR filter. Let's fetch and filter locally since dataset is small (<1000).
+  // Use Supabase server-side search for performance with large datasets
+  if (filters.search) {
+    const q = filters.search.trim();
+    query = query.or(`nombre.ilike.%${q}%,apellido.ilike.%${q}%,cedula.ilike.%${q}%`);
+  }
+
   const { data, error } = await query.order('nombre', { ascending: true });
   if (error) {
     console.error('Error fetching members:', error);
     return [];
   }
 
-  let members = data || [];
-  
-  if (filters.search) {
-    const q = filters.search.toLowerCase().trim();
-    members = members.filter((m) => {
-      const fullName = `${m.nombre} ${m.apellido}`.toLowerCase();
-      const cedula = (m.cedula || '').toLowerCase();
-      return fullName.includes(q) || cedula.includes(q);
-    });
-  }
-
-  return members;
+  return data || [];
 }
 
+/**
+ * Search members by name or cedula (server-side for performance).
+ */
 export async function searchMembers(query) {
   if (!query || !query.trim()) return [];
-  const members = await getAllMembers();
-  const q = query.toLowerCase().trim();
+  const q = query.trim();
+  const { data, error } = await supabase
+    .from('members')
+    .select('*')
+    .or(`nombre.ilike.%${q}%,apellido.ilike.%${q}%,cedula.ilike.%${q}%`)
+    .order('nombre', { ascending: true })
+    .limit(20);
   
-  return members.filter((m) => {
-    const fullName = `${m.nombre} ${m.apellido}`.toLowerCase();
-    const cedula = (m.cedula || '').toLowerCase();
-    return fullName.includes(q) || cedula.includes(q);
-  });
+  if (error) {
+    console.error('Error searching members:', error);
+    return [];
+  }
+  return data || [];
 }
 
+/**
+ * Get count of active members.
+ */
 export async function getMemberCount() {
   const { count, error } = await supabase.from('members').select('*', { count: 'exact', head: true }).eq('estado', 'activo');
   if (error) {
@@ -117,6 +139,9 @@ export async function getMemberCount() {
   return count;
 }
 
+/**
+ * Get count of new members in a date range.
+ */
 export async function getNewMembersCount(startDate, endDate) {
   const { count, error } = await supabase
     .from('members')

@@ -1,10 +1,50 @@
 import { supabase } from '../services/supabase.js';
-import { addPayment, getLatestPayment } from '../db/payments.js';
+import { addPayment, getLatestPayment, hasPendingPayment } from '../db/payments.js';
 import { getDB } from '../db/database.js';
 import { fetchExchangeRate } from '../services/exchange-rate.js';
 import { bsToUsd } from '../utils/currency.js';
 import { calculateExpiration, todayISO, getMembershipStatus, daysRemainingText, formatDate } from '../utils/dates.js';
 import { showToast } from '../components/toast.js';
+
+// Rate limiting storage key
+const RATE_LIMIT_KEY = 'gympay_portal_attempts';
+const MAX_ATTEMPTS = 3;
+const LOCKOUT_MS = 30_000; // 30 seconds
+
+/**
+ * Check and record a login attempt. Returns true if allowed, false if locked out.
+ */
+function checkRateLimit() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(RATE_LIMIT_KEY) || '{"attempts":0,"since":0}');
+    const now = Date.now();
+
+    // Reset if lockout period has passed
+    if (stored.attempts >= MAX_ATTEMPTS && now - stored.since < LOCKOUT_MS) {
+      const remaining = Math.ceil((LOCKOUT_MS - (now - stored.since)) / 1000);
+      return { allowed: false, remaining };
+    }
+
+    if (now - stored.since >= LOCKOUT_MS) {
+      // Reset
+      localStorage.setItem(RATE_LIMIT_KEY, JSON.stringify({ attempts: 1, since: now }));
+    } else {
+      stored.attempts += 1;
+      localStorage.setItem(RATE_LIMIT_KEY, JSON.stringify(stored));
+    }
+
+    return { allowed: true };
+  } catch {
+    return { allowed: true };
+  }
+}
+
+/**
+ * Reset rate limit counter on successful login.
+ */
+function resetRateLimit() {
+  localStorage.removeItem(RATE_LIMIT_KEY);
+}
 
 export async function render(container) {
   let gymName = 'GymPay';
@@ -23,7 +63,10 @@ export async function render(container) {
         <div id="login-section">
           <p style="margin-bottom: var(--space-md);">Ingresa tu número de cédula para consultar tu estado y reportar pagos.</p>
           <form id="portal-login-form">
-            <input type="text" id="cedula-input" class="form-input" placeholder="Ej: 12345678" required style="text-align: center; font-size: 18px; margin-bottom: var(--space-md);">
+            <input type="text" id="cedula-input" class="form-input" placeholder="Ej: 12345678" required
+              style="text-align: center; font-size: 18px; margin-bottom: var(--space-md);"
+              maxlength="12" inputmode="numeric">
+            <div id="rate-limit-msg" style="display:none; color: var(--text-yellow); font-size:13px; margin-bottom: var(--space-sm);"></div>
             <button type="submit" class="btn btn-primary w-full">Ingresar</button>
           </form>
         </div>
@@ -40,6 +83,7 @@ export async function render(container) {
   const cedulaInput = document.getElementById('cedula-input');
   const loginSection = document.getElementById('login-section');
   const contentSection = document.getElementById('portal-content');
+  const rateLimitMsg = document.getElementById('rate-limit-msg');
 
   let currentMember = null;
   let currentRate = 0;
@@ -47,6 +91,16 @@ export async function render(container) {
 
   loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+
+    // Rate limiting check
+    const rl = checkRateLimit();
+    if (!rl.allowed) {
+      rateLimitMsg.style.display = 'block';
+      rateLimitMsg.textContent = `Demasiados intentos. Espera ${rl.remaining} segundos e intenta de nuevo.`;
+      return;
+    }
+    rateLimitMsg.style.display = 'none';
+
     const cedula = cedulaInput.value.trim();
     if (!cedula) return;
 
@@ -64,6 +118,8 @@ export async function render(container) {
         return;
       }
 
+      // Successful login — reset rate limit
+      resetRateLimit();
       currentMember = data;
       
       // Load extra data for payment form
@@ -88,6 +144,10 @@ export async function render(container) {
 
     const latestPayment = await getLatestPayment(currentMember.id);
     const expiration = latestPayment ? latestPayment.fechaVencimiento : null;
+
+    // Check for existing pending payment to prevent duplicates
+    const alreadyPending = await hasPendingPayment(currentMember.id);
+
     let statusHtml = '';
 
     if (expiration) {
@@ -112,14 +172,18 @@ export async function render(container) {
 
     const banks = ['Banesco', 'Mercantil', 'Provincial', 'Venezuela', 'BNC', 'Bicentenario', 'Tesoro', 'Exterior', 'BOD', 'Bancamiga', 'Sofitasa', 'Plaza', 'Caroní', 'Del Sur', 'Fondo Común', 'Otro'];
 
-    contentSection.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-md);">
-        <h3 style="margin: 0;">Hola, ${currentMember.nombre}</h3>
-        <button id="btn-logout" class="btn btn-ghost btn-sm" style="padding: 0; color: var(--text-red);">Salir</button>
+    // If member already has a pending payment, show message instead of form
+    const paymentFormHtml = alreadyPending ? `
+      <div class="card" style="border-color: var(--text-yellow); box-shadow: none;">
+        <div class="card-body" style="padding: var(--space-md); text-align: center;">
+          <div style="font-size: 30px; margin-bottom: 10px;">⏳</div>
+          <h4 style="margin: 0 0 8px 0; color: var(--text-yellow);">Pago Pendiente</h4>
+          <p class="text-muted" style="font-size: 13px; margin: 0;">
+            Ya tienes un pago reportado esperando verificación. Espera a que la recepción lo apruebe antes de enviar otro.
+          </p>
+        </div>
       </div>
-
-      ${statusHtml}
-
+    ` : `
       <div class="card" style="border-color: var(--border-subtle); box-shadow: none;">
         <div class="card-header" style="padding: var(--space-md); background: var(--bg-primary);">
           <h4 style="margin: 0; font-size: 15px;">Reportar Pago Móvil / Transferencia</h4>
@@ -128,7 +192,7 @@ export async function render(container) {
           <form id="report-payment-form">
             <div class="form-group">
               <label class="form-label">Monto transferido (Bs) *</label>
-              <input type="number" name="montoBs" class="form-input" min="1" step="0.01" value="${precioMensual}" required>
+              <input type="number" name="montoBs" class="form-input" min="1" max="${precioMensual * 10 || 999999}" step="0.01" value="${precioMensual}" required>
               <div class="form-hint">Mensualidad estándar: ${precioMensual} Bs</div>
             </div>
 
@@ -142,13 +206,23 @@ export async function render(container) {
 
             <div class="form-group">
               <label class="form-label">Referencia (Últimos 4 dígitos) *</label>
-              <input type="text" name="referencia" class="form-input" maxlength="4" pattern="\\d{4,}" placeholder="Ej: 1234" required>
+              <input type="text" name="referencia" class="form-input" maxlength="4" pattern="\\d{4}" placeholder="Ej: 1234" required inputmode="numeric">
             </div>
 
             <button type="submit" class="btn btn-primary w-full">Enviar Reporte</button>
           </form>
         </div>
       </div>
+    `;
+
+    contentSection.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-md);">
+        <h3 style="margin: 0;">Hola, ${currentMember.nombre}</h3>
+        <button id="btn-logout" class="btn btn-ghost btn-sm" style="padding: 0; color: var(--text-red);">Salir</button>
+      </div>
+
+      ${statusHtml}
+      ${paymentFormHtml}
     `;
 
     document.getElementById('btn-logout').addEventListener('click', () => {
@@ -158,7 +232,10 @@ export async function render(container) {
       contentSection.style.display = 'none';
     });
 
-    document.getElementById('report-payment-form').addEventListener('submit', async (e) => {
+    const reportForm = document.getElementById('report-payment-form');
+    if (!reportForm) return;
+
+    reportForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const form = e.target;
       const btn = form.querySelector('button');

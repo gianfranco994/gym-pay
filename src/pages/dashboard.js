@@ -22,6 +22,10 @@ import { openWhatsApp } from '../services/whatsapp.js';
 import { navigate } from '../router.js';
 import Chart from 'chart.js/auto';
 
+// Store chart instances to prevent memory leaks
+let _chartIncome = null;
+let _chartMethods = null;
+
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 /**
@@ -272,11 +276,15 @@ export async function render(container) {
   Chart.defaults.color = 'hsl(228, 12%, 55%)';
   Chart.defaults.borderColor = 'hsla(228, 15%, 30%, 0.4)';
 
+  // Destroy previous chart instances to prevent memory leaks
+  if (_chartIncome) { _chartIncome.destroy(); _chartIncome = null; }
+  if (_chartMethods) { _chartMethods.destroy(); _chartMethods = null; }
+
   // — Bar chart: monthly income (last 6 months) —
   const incomeCtx = container.querySelector('#chart-income');
   if (incomeCtx) {
     const isUsd = getCurrency() === 'usd';
-    new Chart(incomeCtx, {
+    _chartIncome = new Chart(incomeCtx, {
       type: 'bar',
       data: {
         labels: monthlyData.map((d) => d.label),
@@ -321,7 +329,7 @@ export async function render(container) {
     const efCount = analytics.byMethod.efectivo.count;
     const hasData = pmCount > 0 || efCount > 0;
 
-    new Chart(methodsCtx, {
+    _chartMethods = new Chart(methodsCtx, {
       type: 'doughnut',
       data: {
         labels: ['Pago Móvil', 'Efectivo'],

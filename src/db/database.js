@@ -1,6 +1,32 @@
 import { supabase } from '../services/supabase.js';
 
 /**
+ * Escape HTML special characters to prevent XSS attacks.
+ * @param {string} str
+ * @returns {string}
+ */
+export function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+/**
+ * Validate Venezuelan phone number format (04XX-XXXXXXX or 04XXXXXXXXX)
+ * @param {string} phone
+ * @returns {boolean}
+ */
+export function isValidVenezuelanPhone(phone) {
+  if (!phone) return false;
+  const cleaned = phone.replace(/[-\s]/g, '');
+  return /^04[0-9]{9}$/.test(cleaned);
+}
+
+/**
  * A mock of the getDB interface specifically for settings,
  * so we don't have to rewrite the settings fetch logic in other files.
  */
@@ -20,11 +46,7 @@ export async function getDB() {
         }
         if (!data) return undefined;
         
-        // Return in the format expected by the app { key, value }
-        let val = data.value;
-        // In PostgreSQL JSONB, strings might be wrapped in quotes if not careful, 
-        // but Supabase JS handles JSON parsing automatically.
-        return { key, value: val };
+        return { key, value: data.value };
       }
       return undefined;
     },
