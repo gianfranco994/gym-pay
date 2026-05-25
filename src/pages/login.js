@@ -1,4 +1,5 @@
 import { showToast } from '../components/toast.js';
+import { signIn } from '../services/supabase.js';
 
 export async function render(container) {
   // Hide sidebar and adjust main layout since we are not logged in
@@ -24,25 +25,30 @@ export async function render(container) {
         
         <form id="login-form">
           <div class="form-group mb-md">
-            <label class="form-label">Usuario</label>
-            <input type="text" id="username" class="form-input" required autocomplete="username">
+            <label class="form-label">Correo Electrónico</label>
+            <input type="email" id="username" class="form-input" placeholder="ejemplo@correo.com" required autocomplete="username">
           </div>
           <div class="form-group mb-lg">
             <label class="form-label">Contraseña</label>
             <input type="password" id="password" class="form-input" required autocomplete="current-password">
           </div>
-          <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">Ingresar al Sistema</button>
+          <button type="submit" id="login-btn" class="btn btn-primary" style="width: 100%; justify-content: center;">Ingresar al Sistema</button>
         </form>
       </div>
     </div>
   `;
 
-  document.getElementById('login-form').addEventListener('submit', (e) => {
+  document.getElementById('login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const user = document.getElementById('username').value;
+    const btn = document.getElementById('login-btn');
+    const user = document.getElementById('username').value.trim();
     const pass = document.getElementById('password').value;
 
-    if (user === 'admin' && pass === '1234') {
+    btn.disabled = true;
+    btn.textContent = 'Ingresando...';
+
+    try {
+      await signIn(user, pass);
       localStorage.setItem('gympay_auth', 'true');
       
       // Restore layout
@@ -54,8 +60,10 @@ export async function render(container) {
       }
       
       window.location.hash = '#/dashboard';
-    } else {
-      showToast('Credenciales incorrectas', 'error');
+    } catch (error) {
+      showToast(error.message === 'Invalid login credentials' ? 'Credenciales incorrectas' : 'Error al iniciar sesión', 'error');
+      btn.disabled = false;
+      btn.textContent = 'Ingresar al Sistema';
     }
   });
 }

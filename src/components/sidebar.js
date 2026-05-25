@@ -5,6 +5,7 @@
 import { fetchExchangeRate } from '../services/exchange-rate.js';
 import { formatRate, setRate } from '../utils/currency.js';
 import { getExpiringMembers, getExpiredMembers, getPendingPayments } from '../db/payments.js';
+import { signOut } from '../services/supabase.js';
 
 let currentRoute = 'dashboard';
 
@@ -97,9 +98,14 @@ export async function renderSidebar(navigate) {
 
   const logoutBtn = sidebar.querySelector('#btn-logout');
   if (logoutBtn) {
-    logoutBtn.addEventListener('click', () => {
-      localStorage.removeItem('gympay_auth');
-      window.location.hash = '#/login';
+    logoutBtn.addEventListener('click', async () => {
+      try {
+        await signOut();
+        localStorage.removeItem('gympay_auth');
+        window.location.hash = '#/login';
+      } catch (err) {
+        console.error('Error signing out', err);
+      }
     });
   }
 

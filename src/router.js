@@ -1,6 +1,4 @@
-/**
- * Simple hash-based SPA router for GymPay
- */
+import { getSession } from './services/supabase.js';
 
 const routes = {};
 let currentRoute = null;
@@ -72,10 +70,18 @@ async function handleRoute() {
   currentRoute = path;
 
   // Auth Check
-  const isAuthenticated = localStorage.getItem('gympay_auth') === 'true';
-  const publicRoutes = ['login', 'receipt', 'portal'];
+  const session = await getSession();
+  const isAuthenticated = !!session;
+  const publicRoutes = ['login', 'portal']; // Notice: receipt removed if you didn't build it yet, keep portal
+  
   if (!isAuthenticated && !publicRoutes.includes(path)) {
     window.location.hash = '#/login';
+    return;
+  }
+  
+  // If user is authenticated and tries to go to login, redirect to dashboard
+  if (isAuthenticated && path === 'login') {
+    window.location.hash = '#/dashboard';
     return;
   }
 
