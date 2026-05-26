@@ -15,16 +15,18 @@ export async function render(container) {
     precioMensual: 0,
     precioMensualUsd: 0,
     tasaManual: 0,
-    mensajeWhatsApp: 'Hola {nombre}! 👋 Te recordamos que tu mensualidad en {gym} vence el {fecha}. ¡Te esperamos para renovar! 💪🏋️'
+    mensajeWhatsApp: 'Hola {nombre}! 👋 Te recordamos que tu mensualidad en {gym} vence el {fecha}. ¡Te esperamos para renovar! 💪🏋️',
+    pagoMovilGym: { cedula: '', banco: '', codigoBanco: '', telefono: '' }
   };
 
   try {
     db = await getDB();
-    const keys = ['nombreGym', 'precioMensual', 'precioMensualUsd', 'tasaManual', 'mensajeWhatsApp'];
+    const keys = ['nombreGym', 'precioMensual', 'precioMensualUsd', 'tasaManual', 'mensajeWhatsApp', 'pagoMovilGym'];
     for (const key of keys) {
       const val = await db.get('settings', key);
       if (val) settings[key] = val.value;
     }
+    if (typeof settings.pagoMovilGym !== 'object') settings.pagoMovilGym = { cedula: '', banco: '', codigoBanco: '', telefono: '' };
   } catch (e) {
     console.error('Error loading settings', e);
   }
@@ -125,6 +127,40 @@ export async function render(container) {
             </div>
           </form>
           <div id="wa-preview" class="card" style="display: none; margin-top: var(--space-md); padding: var(--space-md); background: var(--bg-hover); border-color: var(--whatsapp);"></div>
+        </div>
+      </div>
+
+      <!-- Pago Movil del Gym -->
+      <div class="card mb-lg">
+        <div class="card-header"><h3 class="card-title">📱 Datos de Pago Móvil del Gimnasio</h3></div>
+        <div class="card-body">
+          <p class="text-secondary" style="font-size: 14px; margin-bottom: var(--space-md);">Estos datos se mostrarán en el Portal del Cliente para que sepan a dónde transferir el pago.</p>
+          <form id="form-pagomovil">
+            <div class="form-row">
+              <div class="form-group mb-md">
+                <label class="form-label">Cédula del Titular</label>
+                <input type="text" name="cedula" class="form-input" placeholder="Ej: V-12345678" value="${settings.pagoMovilGym.cedula || ''}">
+              </div>
+              <div class="form-group mb-md">
+                <label class="form-label">Teléfono de Pago Móvil</label>
+                <input type="text" name="telefono" class="form-input" placeholder="Ej: 0412-1234567" value="${settings.pagoMovilGym.telefono || ''}">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group mb-md">
+                <label class="form-label">Banco</label>
+                <select name="banco" id="pagomovil-banco" class="form-select">
+                  <option value="">Selecciona banco</option>
+                  ${[['Banesco','0134'],['Mercantil','0105'],['Provincial','0108'],['Venezuela','0102'],['BNC','0191'],['Bicentenario','0175'],['Del Tesoro','0163'],['Exterior','0115'],['BOD','0116'],['Bancamiga','0172'],['Sofitasa','0137'],['Plaza','0138'],['Caroní','0128'],['Del Sur','0157'],['Fondo Común','0151'],['Otro','0000']].map(([name, code]) => `<option value="${name}" data-code="${code}" ${settings.pagoMovilGym.banco === name ? 'selected' : ''}>${name}</option>`).join('')}
+                </select>
+              </div>
+              <div class="form-group mb-md">
+                <label class="form-label">Código del Banco</label>
+                <input type="text" name="codigoBanco" id="pagomovil-codigo" class="form-input" placeholder="Ej: 0134" maxlength="4" value="${settings.pagoMovilGym.codigoBanco || ''}" readonly>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">Guardar Datos de Pago</button>
+          </form>
         </div>
       </div>
 
@@ -324,5 +360,34 @@ export async function render(container) {
       }
     });
   }
+
+
+  // Pago Movil Gym — auto-fill bank code on select
+  const bancoSelect = document.getElementById('pagomovil-banco');
+  const codigoInput = document.getElementById('pagomovil-codigo');
+  if (bancoSelect && codigoInput) {
+    bancoSelect.addEventListener('change', () => {
+      const selected = bancoSelect.options[bancoSelect.selectedIndex];
+      codigoInput.value = selected.dataset.code || '';
+    });
+  }
+
+  // Pago Movil Gym — save
+  document.getElementById('form-pagomovil').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const pagoMovilData = {
+      cedula: formData.get('cedula') || '',
+      banco: formData.get('banco') || '',
+      codigoBanco: formData.get('codigoBanco') || '',
+      telefono: formData.get('telefono') || ''
+    };
+    try {
+      await db.put('settings', { key: 'pagoMovilGym', value: pagoMovilData });
+      showToast('Datos de pago móvil guardados', 'success');
+    } catch (err) {
+      showToast('Error al guardar', 'error');
+    }
+  });
 
 }

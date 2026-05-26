@@ -88,6 +88,7 @@ export async function render(container) {
   let currentMember = null;
   let currentRate = 0;
   let precioMensual = 0;
+  let pagoMovilGym = { cedula: '', banco: '', codigoBanco: '', telefono: '' };
 
   loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -126,6 +127,8 @@ export async function render(container) {
       const db = await getDB();
       const pSet = await db.get('settings', 'precioMensual');
       if (pSet) precioMensual = pSet.value;
+      const pmSet = await db.get('settings', 'pagoMovilGym');
+      if (pmSet && typeof pmSet.value === 'object') pagoMovilGym = pmSet.value;
       const rData = await fetchExchangeRate();
       if (rData) currentRate = rData.rate;
 
@@ -215,6 +218,32 @@ export async function render(container) {
       </div>
     `;
 
+    // Build gym payment info card
+    const hasPagoMovilData = pagoMovilGym.telefono || pagoMovilGym.cedula;
+    const pagoMovilInfoHtml = hasPagoMovilData ? `
+      <div style="
+        background: linear-gradient(135deg, hsla(262,68%,62%,0.12), hsla(157,78%,48%,0.08));
+        border: 1px solid hsla(262,68%,62%,0.3);
+        border-radius: var(--radius-lg);
+        padding: var(--space-md);
+        margin-bottom: var(--space-lg);
+      ">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom: var(--space-md);">
+          <span style="font-size:20px;">📲</span>
+          <strong style="font-size:15px;">Datos para transferir tu pago</strong>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap: var(--space-sm); font-size:14px; margin-bottom:var(--space-md);">
+          ${pagoMovilGym.banco ? `<div><span style="color:var(--text-muted);">Banco</span><br><strong>${pagoMovilGym.banco}${pagoMovilGym.codigoBanco ? ` (${pagoMovilGym.codigoBanco})` : ''}</strong></div>` : ''}
+          ${pagoMovilGym.cedula ? `<div><span style="color:var(--text-muted);">Cédula</span><br><strong>${pagoMovilGym.cedula}</strong></div>` : ''}
+          ${pagoMovilGym.telefono ? `<div><span style="color:var(--text-muted);">Teléfono</span><br><strong>${pagoMovilGym.telefono}</strong></div>` : ''}
+          ${precioMensual ? `<div><span style="color:var(--text-muted);">Monto (30 días)</span><br><strong style="color:var(--status-active);">${precioMensual} Bs</strong></div>` : ''}
+        </div>
+        <button id="btn-copy-payment-data" class="btn btn-secondary btn-sm w-full" style="font-size:13px;">
+          📋 Copiar datos de pago
+        </button>
+      </div>
+    ` : '';
+
     contentSection.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-md);">
         <h3 style="margin: 0;">Hola, ${currentMember.nombre}</h3>
@@ -222,8 +251,29 @@ export async function render(container) {
       </div>
 
       ${statusHtml}
+      ${pagoMovilInfoHtml}
       ${paymentFormHtml}
     `;
+
+    // Copy button logic
+    const copyBtn = document.getElementById('btn-copy-payment-data');
+    if (copyBtn) {
+      copyBtn.addEventListener('click', () => {
+        const lines = [
+          gymName ? `Gym: ${gymName}` : '',
+          pagoMovilGym.banco ? `Banco: ${pagoMovilGym.banco}${pagoMovilGym.codigoBanco ? ` (${pagoMovilGym.codigoBanco})` : ''}` : '',
+          pagoMovilGym.cedula ? `Cédula: ${pagoMovilGym.cedula}` : '',
+          pagoMovilGym.telefono ? `Teléfono: ${pagoMovilGym.telefono}` : '',
+          precioMensual ? `Monto: ${precioMensual} Bs` : '',
+        ].filter(Boolean).join('\n');
+        navigator.clipboard.writeText(lines).then(() => {
+          copyBtn.textContent = '✅ Copiado!';
+          setTimeout(() => { copyBtn.innerHTML = '📋 Copiar datos de pago'; }, 2000);
+        }).catch(() => {
+          showToast('No se pudo copiar', 'error');
+        });
+      });
+    }
 
     document.getElementById('btn-logout').addEventListener('click', () => {
       currentMember = null;

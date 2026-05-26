@@ -46,6 +46,14 @@ async function init() {
     // Update sidebar active state on navigation
     onNavigate(async (routePath) => {
       setActiveRoute(routePath);
+      // Hide sidebar and mobile button on public-only pages
+      const isPublicOnly = ['portal', 'login'].includes(routePath);
+      const sidebar = document.getElementById('sidebar');
+      if (sidebar) sidebar.style.display = isPublicOnly ? 'none' : '';
+      if (mobileMenuBtn) mobileMenuBtn.style.display = isPublicOnly ? 'none' : '';
+      // Also adjust main-content margin when sidebar is hidden
+      const mainContent = document.getElementById('main-content');
+      if (mainContent) mainContent.style.marginLeft = isPublicOnly ? '0' : '';
     });
 
     // Mobile menu button
