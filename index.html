@@ -9,6 +9,21 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script>
+    // Pre-hide sidebar instantly to avoid 1-second flash on initial load
+    if (window.location.hash.includes('/portal') || window.location.hash.includes('/login')) {
+      document.documentElement.classList.add('public-route');
+    }
+  </script>
+  <style>
+    html.public-route .sidebar, 
+    html.public-route .mobile-menu-btn { 
+      display: none !important; 
+    }
+    html.public-route .main-content {
+      margin-left: 0 !important;
+    }
+  </style>
 </head>
 <body>
   <div id="app">

@@ -87,6 +87,12 @@ async function handleRoute() {
 
   // Pre-hide sidebar for public routes immediately to avoid flash during load
   const isPublicOnly = publicRoutes.includes(path);
+  if (isPublicOnly) {
+    document.documentElement.classList.add('public-route');
+  } else {
+    document.documentElement.classList.remove('public-route');
+  }
+  
   const sidebar = document.getElementById('sidebar');
   if (sidebar) sidebar.style.display = isPublicOnly ? 'none' : '';
   const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
