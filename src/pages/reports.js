@@ -53,12 +53,12 @@ export async function render(container) {
       </div>
     </div>
     
-    <div class="date-presets" style="margin-top: -16px; margin-bottom: var(--space-xl); justify-content: flex-end;">
+    <div class="date-presets" style="margin-top: -16px; margin-bottom: var(--space-xl); justify-content: flex-start; flex-wrap: wrap;">
       <button class="btn btn-ghost btn-sm preset-btn" data-preset="month">Este mes</button>
       <button class="btn btn-ghost btn-sm preset-btn" data-preset="last-month">Mes pasado</button>
       <button class="btn btn-ghost btn-sm preset-btn" data-preset="3-months">Últimos 3 meses</button>
       <button class="btn btn-ghost btn-sm preset-btn" data-preset="year">Este año</button>
-      <div style="flex: 1;"></div>
+      <div style="flex: 1; min-width: 20px;"></div>
       <button id="btn-export-excel" class="btn btn-secondary btn-sm" style="display: flex; align-items: center; gap: 8px;">
         <span style="font-size: 16px;">⬇️</span> Exportar a Excel
       </button>
