@@ -1,6 +1,6 @@
 import { getMember, updateMember, toggleMemberStatus, deleteMember } from '../db/members.js';
 import { getPaymentsByMember, getLatestPayment } from '../db/payments.js';
-import { formatDate, daysRemainingText, daysRemaining, getMembershipStatus, toInputDate } from '../utils/dates.js';
+import { formatDate, daysRemainingText, daysRemaining, getMembershipStatus, toInputDate, calculateAge, todayISO } from '../utils/dates.js';
 import { formatAmount } from '../utils/currency.js';
 import { toTitleCase } from '../utils/text.js';
 import { isValidVenezuelanPhone } from '../db/database.js';
@@ -58,8 +58,8 @@ export async function render(container, memberIdStr) {
           <div class="member-meta-item" title="Teléfono">
             <span>📞</span> <a href="tel:${member.telefono}">${member.telefono}</a>
           </div>
-          <div class="member-meta-item" title="Edad">
-            <span>🎂</span> ${member.edad} años
+          <div class="member-meta-item" title="Fecha de Nacimiento / Edad">
+            <span>🎂</span> ${member.fechaNacimiento ? `${formatDate(member.fechaNacimiento)} (${calculateAge(member.fechaNacimiento)} años)` : `${member.edad} años`}
           </div>
           ${member.correo ? `
           <div class="member-meta-item" title="Correo">
@@ -233,8 +233,8 @@ export async function render(container, memberIdStr) {
               <input type="text" name="cedula" class="form-input" value="${member.cedula || ''}">
             </div>
             <div class="form-group">
-              <label class="form-label">Edad *</label>
-              <input type="number" name="edad" class="form-input" required min="10" max="100" value="${member.edad}">
+              <label class="form-label">Fecha de Nacimiento *</label>
+              <input type="date" name="fechaNacimiento" class="form-input" required max="${todayISO()}" value="${toInputDate(member.fechaNacimiento || '')}">
             </div>
           </div>
 
@@ -250,7 +250,8 @@ export async function render(container, memberIdStr) {
           </div>
 
           <div class="form-group">
-            <input type="date" name="fechaInscripcion" class="form-input" required value="${toInputDate(member.fechaInscripcion)}">
+            <label class="form-label">Fecha de Inscripción *</label>
+            <input type="date" name="fechaInscripcion" class="form-input" required value="${toInputDate(member.fechaInscripcion) || todayISO()}">
           </div>
           
           <div class="form-group" style="margin-top: var(--space-xl); padding-top: var(--space-lg); border-top: 1px solid var(--border-subtle);">
@@ -295,7 +296,7 @@ export async function render(container, memberIdStr) {
           nombre: toTitleCase(formData.get('nombre').trim()),
           apellido: toTitleCase(formData.get('apellido').trim()),
           cedula: formData.get('cedula') ? formData.get('cedula').trim() : null,
-          edad: parseInt(formData.get('edad'), 10),
+          fechaNacimiento: formData.get('fechaNacimiento'),
           telefono,
           correo: formData.get('correo') ? formData.get('correo').trim().toLowerCase() : null,
           fechaInscripcion: formData.get('fechaInscripcion')

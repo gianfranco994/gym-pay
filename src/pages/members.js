@@ -127,8 +127,8 @@ export async function render(container) {
                 <div class="form-hint">Dejar vacío si no aplica</div>
               </div>
               <div class="form-group">
-                <label class="form-label">Edad *</label>
-                <input type="number" name="edad" class="form-input" required min="10" max="100">
+                <label class="form-label">Fecha de Nacimiento *</label>
+                <input type="date" name="fechaNacimiento" class="form-input" required max="${todayISO()}">
               </div>
             </div>
 
@@ -245,7 +245,7 @@ export async function render(container) {
             nombre: toTitleCase(formData.get('nombre').trim()),
             apellido: toTitleCase(formData.get('apellido').trim()),
             cedula: formData.get('cedula') ? formData.get('cedula').trim() : null,
-            edad: parseInt(formData.get('edad'), 10),
+            fechaNacimiento: formData.get('fechaNacimiento'),
             telefono,
             correo: formData.get('correo') ? formData.get('correo').trim().toLowerCase() : null,
             fechaInscripcion: fechaInsc

@@ -174,7 +174,28 @@ export function getMonthName(month) {
  * @returns {string} YYYY-MM-DD
  */
 export function toInputDate(date) {
-  if (!date) return todayISO();
+  if (!date) return '';
   const d = typeof date === 'string' ? new Date(date) : date;
+  if (isNaN(d.getTime())) return '';
   return d.toISOString().split('T')[0];
+}
+
+/**
+ * Calculate age based on a birth date string
+ * @param {string} birthDate - Birth date string (YYYY-MM-DD or ISO)
+ * @returns {number|string} Calculated age or "—" if invalid/empty
+ */
+export function calculateAge(birthDate) {
+  if (!birthDate) return '—';
+  const birth = new Date(birthDate);
+  if (isNaN(birth.getTime())) return '—';
+  
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+    age--;
+  }
+  return age;
 }

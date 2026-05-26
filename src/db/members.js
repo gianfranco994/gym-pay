@@ -1,5 +1,6 @@
 import { supabase } from '../services/supabase.js';
 import { invalidateMemberPaymentCache } from './payments.js';
+import { calculateAge } from '../utils/dates.js';
 
 let _memberCountCache = null;
 let _memberCountCacheTime = 0;
@@ -28,11 +29,15 @@ export async function addMember(data) {
     }
   }
 
+  // Calculate age from birth date if provided to maintain database constraints
+  const calculatedAge = data.fechaNacimiento ? calculateAge(data.fechaNacimiento) : (data.edad || 0);
+
   const member = {
     nombre: data.nombre || '',
     apellido: data.apellido || '',
     cedula: data.cedula || null,
-    edad: data.edad || null,
+    edad: typeof calculatedAge === 'number' ? calculatedAge : 0,
+    fechaNacimiento: data.fechaNacimiento || null,
     telefono: data.telefono || '',
     correo: data.correo || null,
     fechaInscripcion: data.fechaInscripcion || now,
@@ -58,6 +63,13 @@ export async function updateMember(id, data) {
     const { data: existing } = await supabase.from('members').select('id').eq('cedula', data.cedula).neq('id', id).maybeSingle();
     if (existing) {
       throw new Error(`Ya existe un miembro con la cédula "${data.cedula}".`);
+    }
+  }
+
+  if (data.fechaNacimiento) {
+    const calculatedAge = calculateAge(data.fechaNacimiento);
+    if (typeof calculatedAge === 'number') {
+      data.edad = calculatedAge;
     }
   }
 
