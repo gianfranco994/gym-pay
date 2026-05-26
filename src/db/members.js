@@ -1,5 +1,17 @@
 import { supabase } from '../services/supabase.js';
 
+let _memberCountCache = null;
+let _memberCountCacheTime = 0;
+let _newMembersCache = new Map();
+let _newMembersCacheTime = 0;
+const CACHE_TTL = 60_000;
+
+export function invalidateMembersCache() {
+  _memberCountCache = null;
+  _memberCountCacheTime = 0;
+  _newMembersCache.clear();
+}
+
 /**
  * Add a new member to the database.
  * @param {Object} data
@@ -33,6 +45,7 @@ export async function addMember(data) {
     console.error('Error adding member:', error);
     throw error;
   }
+  invalidateMembersCache();
   return result.id;
 }
 
@@ -52,6 +65,7 @@ export async function updateMember(id, data) {
     console.error('Error updating member:', error);
     throw error;
   }
+  invalidateMembersCache();
   return result;
 }
 
@@ -66,6 +80,7 @@ export async function toggleMemberStatus(id) {
   const { data: updated, error } = await supabase.from('members').update({ estado: newStatus }).eq('id', id).select().single();
   if (error) throw error;
   
+  invalidateMembersCache();
   return updated;
 }
 
@@ -131,11 +146,17 @@ export async function searchMembers(query) {
  * Get count of active members.
  */
 export async function getMemberCount() {
+  const now = Date.now();
+  if (_memberCountCache !== null && now - _memberCountCacheTime < CACHE_TTL) return _memberCountCache;
+
   const { count, error } = await supabase.from('members').select('*', { count: 'exact', head: true }).eq('estado', 'activo');
   if (error) {
     console.error('Error counting members:', error);
     return 0;
   }
+  
+  _memberCountCache = count;
+  _memberCountCacheTime = now;
   return count;
 }
 
@@ -143,6 +164,14 @@ export async function getMemberCount() {
  * Get count of new members in a date range.
  */
 export async function getNewMembersCount(startDate, endDate) {
+  const cacheKey = `${startDate}_${endDate}`;
+  const now = Date.now();
+  if (now - _newMembersCacheTime > CACHE_TTL) {
+    _newMembersCache.clear();
+    _newMembersCacheTime = now;
+  }
+  if (_newMembersCache.has(cacheKey)) return _newMembersCache.get(cacheKey);
+
   const { count, error } = await supabase
     .from('members')
     .select('*', { count: 'exact', head: true })
@@ -153,5 +182,7 @@ export async function getNewMembersCount(startDate, endDate) {
     console.error('Error counting new members:', error);
     return 0;
   }
+  
+  _newMembersCache.set(cacheKey, count);
   return count;
 }

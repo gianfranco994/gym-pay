@@ -49,6 +49,13 @@ async function getMembersWithLatestPayment() {
  */
 let _membersWithPaymentCache = null;
 let _membersWithPaymentCacheTime = 0;
+let _analyticsCache = new Map();
+let _analyticsCacheTime = 0;
+let _allPaymentsCache = null;
+let _allPaymentsCacheTime = 0;
+let _pendingPaymentsCache = null;
+let _pendingPaymentsCacheTime = 0;
+
 const CACHE_TTL = 60_000; // 1 minute
 
 async function getMembersWithLatestPaymentCached() {
@@ -65,6 +72,11 @@ async function getMembersWithLatestPaymentCached() {
 export function invalidateMemberPaymentCache() {
   _membersWithPaymentCache = null;
   _membersWithPaymentCacheTime = 0;
+  _analyticsCache.clear();
+  _allPaymentsCache = null;
+  _allPaymentsCacheTime = 0;
+  _pendingPaymentsCache = null;
+  _pendingPaymentsCacheTime = 0;
 }
 
 /**
@@ -232,6 +244,9 @@ export async function getCustomAnalytics(startDate, endDate) {
  * Get all recent approved payments (limited to 100 for performance).
  */
 export async function getAllPayments() {
+  const now = Date.now();
+  if (_allPaymentsCache && now - _allPaymentsCacheTime < CACHE_TTL) return _allPaymentsCache;
+
   const { data, error } = await supabase
     .from('payments')
     .select('*')
@@ -239,6 +254,9 @@ export async function getAllPayments() {
     .order('fechaPago', { ascending: false })
     .limit(100); // Prevent downloading thousands of records
   if (error) return [];
+  
+  _allPaymentsCache = data;
+  _allPaymentsCacheTime = now;
   return data;
 }
 
@@ -255,12 +273,18 @@ export async function getPayment(paymentId) {
  * Get all pending payments (awaiting approval) with member info.
  */
 export async function getPendingPayments() {
+  const now = Date.now();
+  if (_pendingPaymentsCache && now - _pendingPaymentsCacheTime < CACHE_TTL) return _pendingPaymentsCache;
+
   const { data, error } = await supabase
     .from('payments')
     .select('*, members(nombre, apellido, cedula)')
     .eq('estado_pago', 'pendiente')
     .order('createdAt', { ascending: false });
   if (error) return [];
+  
+  _pendingPaymentsCache = data;
+  _pendingPaymentsCacheTime = now;
   return data;
 }
 
@@ -311,6 +335,15 @@ export async function rejectPayment(paymentId) {
  * Compute analytics for a date range.
  */
 async function computeAnalytics(startDate, endDate) {
+  const cacheKey = `${startDate}_${endDate}`;
+  const now = Date.now();
+  
+  if (now - _analyticsCacheTime > CACHE_TTL) {
+    _analyticsCache.clear();
+    _analyticsCacheTime = now;
+  }
+  if (_analyticsCache.has(cacheKey)) return _analyticsCache.get(cacheKey);
+
   const payments = await getPaymentsByDateRange(startDate, endDate);
   
   let totalBs = 0;
@@ -357,7 +390,7 @@ async function computeAnalytics(startDate, endDate) {
     }
   }
 
-  return {
+  const result = {
     totalBs,
     totalUsd,
     totalPayments: payments.length,
@@ -365,4 +398,7 @@ async function computeAnalytics(startDate, endDate) {
     renewals,
     byMethod,
   };
+  
+  _analyticsCache.set(cacheKey, result);
+  return result;
 }

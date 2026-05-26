@@ -226,13 +226,13 @@ export async function render(container) {
           datasets: [
             {
               label: 'Pago Móvil',
-              data: [analytics.byMethod.pagoMovil.totalBs],
+              data: [analytics.byMethod.pagoMovil.total],
               backgroundColor: 'hsl(157, 78%, 48%)',
               borderRadius: 4
             },
             {
               label: 'Efectivo',
-              data: [analytics.byMethod.efectivo.totalBs],
+              data: [analytics.byMethod.efectivo.total],
               backgroundColor: 'hsl(262, 68%, 62%)',
               borderRadius: 4
             }
