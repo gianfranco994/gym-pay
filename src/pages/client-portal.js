@@ -244,7 +244,7 @@ export async function render(container) {
       <div class="card" style="padding: var(--space-xl);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-md);">
           <h3 style="margin: 0;">Hola, ${currentMember.nombre}</h3>
-          <button type="button" id="btn-logout" class="btn btn-ghost btn-sm" style="padding: 0; color: var(--text-red);">Salir</button>
+          <button type="button" id="btn-portal-logout" class="btn btn-ghost btn-sm" style="padding: 0; color: var(--text-red);">Salir</button>
         </div>
 
         ${statusHtml}
@@ -273,7 +273,7 @@ export async function render(container) {
       });
     }
 
-    document.getElementById('btn-logout').addEventListener('click', () => {
+    document.getElementById('btn-portal-logout').addEventListener('click', () => {
       currentMember = null;
       cedulaInput.value = '';
       loginSection.style.display = 'block';
