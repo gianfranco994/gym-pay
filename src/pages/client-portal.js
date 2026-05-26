@@ -55,12 +55,11 @@ export async function render(container) {
   } catch (e) {}
 
   container.innerHTML = `
-    <div style="max-width: 500px; margin: 40px auto; padding: var(--space-md);">
-      <div class="card" style="text-align: center; padding: var(--space-xl);">
-        <h1 style="color: var(--accent-primary); margin-bottom: 5px;">${gymName}</h1>
-        <p class="text-muted" style="margin-bottom: var(--space-xl);">Portal de Autogestión</p>
-
-        <div id="login-section">
+    <div id="portal-wrapper" style="max-width: 500px; margin: 40px auto; padding: var(--space-md);">
+      <div id="login-section">
+        <div class="card" style="text-align: center; padding: var(--space-xl);">
+          <h1 style="color: var(--accent-primary); margin-bottom: 5px;">${gymName}</h1>
+          <p class="text-muted" style="margin-bottom: var(--space-xl);">Portal de Autogestión</p>
           <p style="margin-bottom: var(--space-md);">Ingresa tu número de cédula para consultar tu estado y reportar pagos.</p>
           <form id="portal-login-form">
             <input type="text" id="cedula-input" class="form-input" placeholder="Ej: 12345678" required
@@ -70,14 +69,11 @@ export async function render(container) {
             <button type="submit" class="btn btn-primary w-full">Ingresar</button>
           </form>
         </div>
-
-        <div id="portal-content" style="display: none; text-align: left;">
-          <!-- Loaded dynamically -->
-        </div>
-
       </div>
+      <div id="portal-content" style="display: none; text-align: left;"></div>
     </div>
   `;
+
 
   const loginForm = document.getElementById('portal-login-form');
   const cedulaInput = document.getElementById('cedula-input');
@@ -238,21 +234,23 @@ export async function render(container) {
           ${pagoMovilGym.telefono ? `<div><span style="color:var(--text-muted);">Teléfono</span><br><strong>${pagoMovilGym.telefono}</strong></div>` : ''}
           ${precioMensual ? `<div><span style="color:var(--text-muted);">Monto (30 días)</span><br><strong style="color:var(--status-active);">${precioMensual} Bs</strong></div>` : ''}
         </div>
-        <button id="btn-copy-payment-data" class="btn btn-secondary btn-sm w-full" style="font-size:13px;">
+        <button type="button" id="btn-copy-payment-data" class="btn btn-secondary btn-sm w-full" style="font-size:13px;">
           📋 Copiar datos de pago
         </button>
       </div>
     ` : '';
 
     contentSection.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-md);">
-        <h3 style="margin: 0;">Hola, ${currentMember.nombre}</h3>
-        <button id="btn-logout" class="btn btn-ghost btn-sm" style="padding: 0; color: var(--text-red);">Salir</button>
-      </div>
+      <div class="card" style="padding: var(--space-xl);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-md);">
+          <h3 style="margin: 0;">Hola, ${currentMember.nombre}</h3>
+          <button type="button" id="btn-logout" class="btn btn-ghost btn-sm" style="padding: 0; color: var(--text-red);">Salir</button>
+        </div>
 
-      ${statusHtml}
-      ${pagoMovilInfoHtml}
-      ${paymentFormHtml}
+        ${statusHtml}
+        ${pagoMovilInfoHtml}
+        ${paymentFormHtml}
+      </div>
     `;
 
     // Copy button logic
@@ -280,6 +278,7 @@ export async function render(container) {
       cedulaInput.value = '';
       loginSection.style.display = 'block';
       contentSection.style.display = 'none';
+      contentSection.innerHTML = '';
     });
 
     const reportForm = document.getElementById('report-payment-form');
