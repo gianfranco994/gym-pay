@@ -1497,6 +1497,17 @@ tbody tr:last-child td {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
+
+  .modal-footer {
+    justify-content: center;
+    flex-wrap: wrap;
+    padding: var(--space-lg) var(--space-md);
+  }
+
+  .modal-footer .btn {
+    flex: 1;
+    min-width: 130px;
+  }
 }
 
 /* Mobile menu button - hidden by default */
