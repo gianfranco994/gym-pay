@@ -33,8 +33,14 @@ async function getMembersWithLatestPayment() {
   const latestMap = new Map();
   for (const p of (allPayments || [])) {
     const current = latestMap.get(p.memberId);
-    if (!current || new Date(p.fechaPago) > new Date(current.fechaPago)) {
+    if (!current) {
       latestMap.set(p.memberId, p);
+    } else {
+      const pVenc = new Date(p.fechaVencimiento).getTime();
+      const currVenc = new Date(current.fechaVencimiento).getTime();
+      if (pVenc > currVenc || (pVenc === currVenc && p.id > current.id)) {
+        latestMap.set(p.memberId, p);
+      }
     }
   }
 
@@ -147,7 +153,8 @@ export async function getLatestPayment(memberId) {
     .select('*')
     .eq('memberId', memberId)
     .eq('estado_pago', 'aprobado')
-    .order('fechaPago', { ascending: false })
+    .order('fechaVencimiento', { ascending: false })
+    .order('createdAt', { ascending: false })
     .limit(1)
     .maybeSingle();
 
