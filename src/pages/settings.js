@@ -11,13 +11,14 @@ export async function render(container) {
   let settings = {
     nombreGym: 'Mi Gimnasio',
     precioMensual: 0,
+    precioMensualUsd: 0,
     tasaManual: 0,
     mensajeWhatsApp: 'Hola {nombre}! 👋 Te recordamos que tu mensualidad en {gym} vence el {fecha}. ¡Te esperamos para renovar! 💪🏋️'
   };
 
   try {
     db = await getDB();
-    const keys = ['nombreGym', 'precioMensual', 'tasaManual', 'mensajeWhatsApp'];
+    const keys = ['nombreGym', 'precioMensual', 'precioMensualUsd', 'tasaManual', 'mensajeWhatsApp'];
     for (const key of keys) {
       const val = await db.get('settings', key);
       if (val) settings[key] = val.value;
@@ -29,9 +30,11 @@ export async function render(container) {
   // Current rate display
   let rateDisplay = 'Cargando...';
   let rateSource = '';
+  let currentRate = 0;
   try {
     const rateData = await fetchExchangeRate();
     if (rateData && rateData.rate) {
+      currentRate = rateData.rate;
       rateDisplay = formatRate(rateData.rate);
       rateSource = `Fuente: ${rateData.source} • Última actualización: ${new Date(rateData.timestamp).toLocaleString('es-VE')}`;
     } else {
@@ -54,15 +57,20 @@ export async function render(container) {
         <div class="card-header"><h3 class="card-title">🏢 Información del Gimnasio</h3></div>
         <div class="card-body">
           <form id="form-gym">
+            <div class="form-group mb-md">
+              <label class="form-label">Nombre del Gimnasio</label>
+              <input type="text" name="nombreGym" class="form-input" value="${settings.nombreGym}" required>
+            </div>
             <div class="form-row">
               <div class="form-group mb-md">
-                <label class="form-label">Nombre del Gimnasio</label>
-                <input type="text" name="nombreGym" class="form-input" value="${settings.nombreGym}" required>
+                <label class="form-label">💵 Precio Mensual ($)</label>
+                <input type="number" name="precioMensualUsd" id="precio-usd" class="form-input" min="0" step="0.01" value="${settings.precioMensualUsd || ''}">
+                <div class="form-hint">Precio de referencia en dólares</div>
               </div>
               <div class="form-group mb-md">
-                <label class="form-label">Precio Mensual Estándar (Bs)</label>
-                <input type="number" name="precioMensual" class="form-input" min="0" step="0.01" value="${settings.precioMensual}">
-                <div class="form-hint">Monto por defecto al registrar pagos</div>
+                <label class="form-label">🇻🇪 Precio Mensual (Bs)</label>
+                <input type="number" name="precioMensual" id="precio-bs" class="form-input" min="0" step="0.01" value="${settings.precioMensual}">
+                <div class="form-hint" id="precio-bs-hint">${currentRate > 0 && settings.precioMensualUsd > 0 ? `Auto-calculado: $${settings.precioMensualUsd} × ${currentRate.toFixed(2)} = ${(settings.precioMensualUsd * currentRate).toFixed(2)} Bs` : 'Monto por defecto al registrar pagos'}</div>
               </div>
             </div>
             <button type="submit" class="btn btn-primary btn-sm">Guardar Cambios</button>
@@ -127,12 +135,30 @@ export async function render(container) {
     const formData = new FormData(e.target);
     try {
       await db.put('settings', { key: 'nombreGym', value: formData.get('nombreGym') });
+      await db.put('settings', { key: 'precioMensualUsd', value: parseFloat(formData.get('precioMensualUsd')) || 0 });
       await db.put('settings', { key: 'precioMensual', value: parseFloat(formData.get('precioMensual')) || 0 });
       showToast('Configuración general guardada', 'success');
     } catch (err) {
       showToast('Error al guardar', 'error');
     }
   });
+
+  // Auto-calculate Bs from USD when USD price changes
+  const precioUsdInput = document.getElementById('precio-usd');
+  const precioBsInput = document.getElementById('precio-bs');
+  const precioBsHint = document.getElementById('precio-bs-hint');
+  if (precioUsdInput && precioBsInput && currentRate > 0) {
+    precioUsdInput.addEventListener('input', () => {
+      const usd = parseFloat(precioUsdInput.value) || 0;
+      if (usd > 0) {
+        const bs = (usd * currentRate).toFixed(2);
+        precioBsInput.value = bs;
+        precioBsHint.textContent = `Auto-calculado: $${usd} × ${currentRate.toFixed(2)} = ${bs} Bs`;
+      } else {
+        precioBsHint.textContent = 'Monto por defecto al registrar pagos';
+      }
+    });
+  }
 
   // Rate Settings
   document.getElementById('btn-refresh-rate').addEventListener('click', async () => {
