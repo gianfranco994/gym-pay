@@ -85,6 +85,15 @@ async function handleRoute() {
     return;
   }
 
+  // Pre-hide sidebar for public routes immediately to avoid flash during load
+  const isPublicOnly = publicRoutes.includes(path);
+  const sidebar = document.getElementById('sidebar');
+  if (sidebar) sidebar.style.display = isPublicOnly ? 'none' : '';
+  const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
+  if (mobileMenuBtn) mobileMenuBtn.style.display = isPublicOnly ? 'none' : '';
+  const mainContent = document.getElementById('main-content');
+  if (mainContent) mainContent.style.marginLeft = isPublicOnly ? '0' : '';
+
   // Show loading state
   container.innerHTML = `
     <div class="page-container">
