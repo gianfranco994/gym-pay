@@ -14,6 +14,7 @@ export async function render(container, queryParams, parsedQuery) {
   let allMembers = [];
   let currentRate = 0;
   let precioMensual = 0;
+  let precioMensualUsd = 0;
 
   try {
     const [membersData, db, rateData] = await Promise.all([
@@ -31,6 +32,17 @@ export async function render(container, queryParams, parsedQuery) {
     if (precioSetting && precioSetting.value) {
       precioMensual = precioSetting.value;
     }
+
+    const precioUsdSetting = await db.get('settings', 'precioMensualUsd');
+    if (precioUsdSetting && precioUsdSetting.value) {
+      precioMensualUsd = precioUsdSetting.value;
+    }
+
+    // Auto-calculate daily Bs equivalent if USD price is set
+    if (precioMensualUsd > 0 && currentRate > 0) {
+      precioMensual = Math.round(precioMensualUsd * currentRate * 100) / 100;
+    }
+
   } catch (err) {
     console.error('Error cargando datos para nuevo pago', err);
   }
@@ -66,7 +78,7 @@ export async function render(container, queryParams, parsedQuery) {
                     <span class="search-icon">🔍</span>
                     <input type="text" id="member-search" class="search-input" placeholder="Buscar por nombre o cédula..." autocomplete="off">
                   </div>
-                  <div id="member-dropdown" class="card" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 10; max-height: 200px; overflow-y: auto; margin-top: 4px;"></div>
+                  <div id="member-dropdown" class="card" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 10; max-height: 200px; overflow-y: auto; margin-top: 4px; background: var(--bg-elevated); backdrop-filter: none;"></div>
                 </div>
               ` : `
                 <div id="selected-member-card" class="card" style="display: none; padding: var(--space-md); margin-bottom: var(--space-sm); background: var(--bg-hover); border-color: var(--accent-primary);"></div>
@@ -77,7 +89,7 @@ export async function render(container, queryParams, parsedQuery) {
                     <span class="search-icon">🔍</span>
                     <input type="text" id="member-search" class="search-input" placeholder="Buscar por nombre o cédula..." autocomplete="off">
                   </div>
-                  <div id="member-dropdown" class="card" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 10; max-height: 200px; overflow-y: auto; margin-top: 4px;"></div>
+                  <div id="member-dropdown" class="card" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 10; max-height: 200px; overflow-y: auto; margin-top: 4px; background: var(--bg-elevated); backdrop-filter: none;"></div>
                 </div>
               `}
             </div>

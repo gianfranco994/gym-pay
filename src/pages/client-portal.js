@@ -129,6 +129,12 @@ export async function render(container) {
       const rData = await fetchExchangeRate();
       if (rData) currentRate = rData.rate;
 
+      // Auto-calculate daily Bs equivalent if USD price is set
+      const pUsdSet = await db.get('settings', 'precioMensualUsd');
+      if (pUsdSet && pUsdSet.value > 0 && currentRate > 0) {
+        precioMensual = Math.round(pUsdSet.value * currentRate * 100) / 100;
+      }
+
       renderPortalContent();
 
     } catch (err) {
