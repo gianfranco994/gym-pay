@@ -10,6 +10,7 @@ import { navigate } from '../router.js';
 export async function render(container, queryParams, parsedQuery) {
   const query = parsedQuery || {};
   let selectedMemberId = query.member ? parseInt(query.member, 10) : null;
+  let selectedMemberBaseExpiration = null; // Store future expiration for accumulation
   let allMembers = [];
   let currentRate = 0;
   let precioMensual = 0;
@@ -242,8 +243,14 @@ export async function render(container, queryParams, parsedQuery) {
     idInput.value = id;
     selectedMemberId = id;
 
-    // If active and has a previous expiration, calculate new from that expiration date?
-    // User requested simpler logic: from today or selected payment date, add days.
+    // Si el miembro tiene un pago activo en el futuro, guardamos esa fecha para acumular
+    const today = todayISO();
+    if (latestPayment && latestPayment.fechaVencimiento > today) {
+      selectedMemberBaseExpiration = latestPayment.fechaVencimiento;
+    } else {
+      selectedMemberBaseExpiration = null;
+    }
+
     updateExpiration();
   }
 
@@ -304,6 +311,8 @@ export async function render(container, queryParams, parsedQuery) {
       searchContainer.style.display = 'block';
       idInput.value = '';
       selectedMemberId = null;
+      selectedMemberBaseExpiration = null;
+      updateExpiration();
       if (searchInput) searchInput.focus();
     });
   }
@@ -320,7 +329,14 @@ export async function render(container, queryParams, parsedQuery) {
 
   function updateExpiration() {
     const days = parseInt(diasPlanInput.value, 10) || 30;
-    const start = fechaPago.value || todayISO();
+    const today = todayISO();
+    let start = fechaPago.value || today;
+    
+    // Si la fecha de pago es "hoy" y el miembro tiene días a favor, acumular
+    if (selectedMemberBaseExpiration && start === today) {
+      start = selectedMemberBaseExpiration;
+    }
+    
     fechaVencimiento.value = calculateExpiration(start, days);
   }
 
