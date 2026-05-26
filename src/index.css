@@ -469,6 +469,8 @@ a:hover {
 /* --- Tables --- */
 .table-wrapper {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  width: 100%;
 }
 
 table {
@@ -1415,6 +1417,7 @@ tbody tr:last-child td {
 
   .page-container {
     padding: var(--space-md);
+    padding-bottom: calc(var(--space-2xl) + 80px); /* Previene que el contenido final quede oculto por la barra de navegación del teléfono */
   }
 
   .page-header {
