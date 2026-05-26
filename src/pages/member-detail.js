@@ -295,7 +295,7 @@ export async function render(container, memberIdStr) {
         const data = {
           nombre: toTitleCase(formData.get('nombre').trim()),
           apellido: toTitleCase(formData.get('apellido').trim()),
-          cedula: formData.get('cedula') ? formData.get('cedula').trim() : null,
+          cedula: formData.get('cedula') ? formData.get('cedula').trim().replace(/\D/g, '') : null,
           fechaNacimiento: formData.get('fechaNacimiento'),
           telefono,
           correo: formData.get('correo') ? formData.get('correo').trim().toLowerCase() : null,

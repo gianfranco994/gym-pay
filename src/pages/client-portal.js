@@ -98,8 +98,8 @@ export async function render(container) {
     }
     rateLimitMsg.style.display = 'none';
 
-    // Formatear cédula: quitar puntos, comas, espacios y guiones
-    const cedula = cedulaInput.value.trim().replace(/[\.\,\-\s]/g, '');
+    // Formatear cédula: dejar SOLO números (quita V, E, puntos, guiones, espacios)
+    const cedula = cedulaInput.value.trim().replace(/\D/g, '');
     if (!cedula) return;
 
     const btn = loginForm.querySelector('button');
