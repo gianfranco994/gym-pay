@@ -142,11 +142,17 @@ export async function render(container) {
     loginSection.style.display = 'none';
     contentSection.style.display = 'block';
 
-    const latestPayment = await getLatestPayment(currentMember.id);
+    // SECURE: Use RPC to bypass RLS select restriction safely for a specific member
+    const { data: latestPayment } = await supabase.rpc('get_latest_payment_for_member', { p_member_id: currentMember.id }).maybeSingle();
     const expiration = latestPayment ? latestPayment.fechaVencimiento : null;
 
-    // Check for existing pending payment to prevent duplicates
-    const alreadyPending = await hasPendingPayment(currentMember.id);
+    // SECURE: Use RPC to safely check pending payments
+    const { data: alreadyPending } = await supabase.rpc('has_pending_payment', { p_member_id: currentMember.id });
+
+    // SECURE: Sanitize member name to prevent XSS
+    const safeNombre = (currentMember.nombre || '').replace(/[&<>"']/g, function(m) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
+    });
 
     let statusHtml = '';
 
@@ -244,7 +250,7 @@ export async function render(container) {
     contentSection.innerHTML = `
       <div class="card" style="padding: var(--space-xl);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-md);">
-          <h3 style="margin: 0;">Hola, ${currentMember.nombre}</h3>
+          <h3 style="margin: 0;">Hola, ${safeNombre}</h3>
           <button type="button" id="btn-portal-logout" class="btn btn-ghost btn-sm" style="padding: 0; color: var(--text-red);">Salir</button>
         </div>
 
