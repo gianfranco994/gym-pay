@@ -3,8 +3,10 @@ import { fetchExchangeRate, clearRateCache } from '../services/exchange-rate.js'
 import { downloadBackup, importData, clearAllData } from '../utils/export.js';
 import { formatRate, setRate } from '../utils/currency.js';
 import { showToast } from '../components/toast.js';
-import { confirmDialog } from '../components/modal.js';
-import { todayISO, formatDate } from '../utils/dates.js';
+import { showModal, confirmDialog } from '../components/modal.js';
+import { todayISO, formatDate, daysRemainingText } from '../utils/dates.js';
+import { getInactiveMembers } from '../db/payments.js';
+import { deleteMember } from '../db/members.js';
 
 export async function render(container) {
   let db;
@@ -126,6 +128,15 @@ export async function render(container) {
         </div>
       </div>
 
+      <!-- Mantenimiento -->
+      <div class="card mb-lg" style="border-color: var(--status-danger);">
+        <div class="card-header"><h3 class="card-title text-red">🛠️ Mantenimiento de Datos</h3></div>
+        <div class="card-body">
+          <p class="text-secondary" style="font-size: 14px; margin-bottom: var(--space-md);">Limpia tu base de datos eliminando clientes que tienen mucho tiempo sin pagar (vencidos por más de 30 días, o registrados hace más de 30 días sin ningún pago).</p>
+          <button type="button" id="btn-cleanup" class="btn btn-secondary btn-sm" style="color: var(--status-danger); border-color: var(--status-danger);">Ver Clientes Inactivos (> 30 días)</button>
+        </div>
+      </div>
+
     </div>
   `;
 
@@ -219,5 +230,99 @@ export async function render(container) {
     preview.innerHTML = `<div style="font-size: 13px; color: var(--text-muted); margin-bottom: 4px;">Vista previa del mensaje:</div><div style="white-space: pre-wrap;">${msg}</div>`;
     preview.style.display = 'block';
   });
+
+  // Cleanup Logic
+  const btnCleanup = document.getElementById('btn-cleanup');
+  if (btnCleanup) {
+    btnCleanup.addEventListener('click', async () => {
+      btnCleanup.disabled = true;
+      btnCleanup.textContent = 'Cargando...';
+      try {
+        const inactiveMembers = await getInactiveMembers(30);
+        
+        if (inactiveMembers.length === 0) {
+          showToast('No hay clientes con más de 30 días inactivos.', 'success');
+          btnCleanup.disabled = false;
+          btnCleanup.textContent = 'Ver Clientes Inactivos (> 30 días)';
+          return;
+        }
+
+        showModal({
+          title: 'Clientes Inactivos (> 30 días)',
+          content: `
+            <p class="text-secondary" style="font-size: 14px; margin-bottom: var(--space-md);">Selecciona los clientes que deseas borrar permanentemente. Esta acción no se puede deshacer y borrará también sus historiales de pago.</p>
+            
+            <div style="margin-bottom: var(--space-md); padding: var(--space-sm); background: var(--bg-hover); border-radius: var(--radius-sm);">
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: bold;">
+                <input type="checkbox" id="selectAllCleanup"> Seleccionar todos (${inactiveMembers.length})
+              </label>
+            </div>
+
+            <div id="cleanup-list" style="max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--border-subtle); padding: var(--space-sm); border-radius: var(--radius-sm);">
+              ${inactiveMembers.map(m => `
+                <label style="display: flex; align-items: center; gap: 12px; cursor: pointer; padding: 8px; border-bottom: 1px solid var(--border-subtle);">
+                  <input type="checkbox" class="cleanup-checkbox" value="${m.id}">
+                  <div>
+                    <div style="font-weight: 600;">${m.nombre} ${m.apellido}</div>
+                    <div style="font-size: 12px; color: var(--text-muted);">
+                      ${m.latestPayment ? 'Último vencimiento: ' + formatDate(m.latestPayment.fechaVencimiento) : 'Inscrito el: ' + formatDate(m.fechaInscripcion)}
+                    </div>
+                  </div>
+                </label>
+              `).join('')}
+            </div>
+          `,
+          submitText: 'Borrar Seleccionados',
+          submitClass: 'btn-danger',
+          onMount: (body) => {
+            const selectAll = body.querySelector('#selectAllCleanup');
+            const checkboxes = body.querySelectorAll('.cleanup-checkbox');
+            
+            selectAll.addEventListener('change', (e) => {
+              checkboxes.forEach(cb => cb.checked = e.target.checked);
+            });
+
+            checkboxes.forEach(cb => {
+              cb.addEventListener('change', () => {
+                const allChecked = Array.from(checkboxes).every(c => c.checked);
+                const someChecked = Array.from(checkboxes).some(c => c.checked);
+                selectAll.checked = allChecked;
+                selectAll.indeterminate = someChecked && !allChecked;
+              });
+            });
+          },
+          onSubmit: async (body) => {
+            const checkedIds = Array.from(body.querySelectorAll('.cleanup-checkbox:checked')).map(cb => parseInt(cb.value, 10));
+            
+            if (checkedIds.length === 0) {
+              showToast('No seleccionaste a nadie para borrar', 'error');
+              return false;
+            }
+
+            if (await confirmDialog('⚠️ ADVERTENCIA FINAL', `¿Seguro que quieres borrar a ${checkedIds.length} cliente(s) de forma permanente?`)) {
+              // Delete sequentially or parallel? sequential is safer for DB if too many
+              let deleted = 0;
+              for (const id of checkedIds) {
+                try {
+                  await deleteMember(id);
+                  deleted++;
+                } catch (e) {
+                  console.error('Error deleting member', id, e);
+                }
+              }
+              showToast(`Se borraron ${deleted} clientes exitosamente`, 'success');
+              return true; // close modal
+            }
+            return false; // don't close modal if cancelled
+          }
+        });
+      } catch (e) {
+        showToast('Error cargando lista', 'error');
+      } finally {
+        btnCleanup.disabled = false;
+        btnCleanup.textContent = 'Ver Clientes Inactivos (> 30 días)';
+      }
+    });
+  }
 
 }

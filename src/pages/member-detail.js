@@ -1,4 +1,4 @@
-import { getMember, updateMember, toggleMemberStatus } from '../db/members.js';
+import { getMember, updateMember, toggleMemberStatus, deleteMember } from '../db/members.js';
 import { getPaymentsByMember, getLatestPayment } from '../db/payments.js';
 import { formatDate, daysRemainingText, daysRemaining, getMembershipStatus, toInputDate } from '../utils/dates.js';
 import { formatAmount } from '../utils/currency.js';
@@ -250,12 +250,36 @@ export async function render(container, memberIdStr) {
           </div>
 
           <div class="form-group">
-            <label class="form-label">Fecha de Inscripción *</label>
             <input type="date" name="fechaInscripcion" class="form-input" required value="${toInputDate(member.fechaInscripcion)}">
+          </div>
+          
+          <div class="form-group" style="margin-top: var(--space-xl); padding-top: var(--space-lg); border-top: 1px solid var(--border-subtle);">
+            <button type="button" id="btn-delete-member" class="btn btn-danger w-full" style="background: transparent; border: 1px solid var(--status-danger);">🗑️ Borrar Cliente y Todos sus Pagos</button>
           </div>
         </form>
       `,
       submitText: 'Guardar Cambios',
+      onMount: (body) => {
+        const btnDelete = body.querySelector('#btn-delete-member');
+        if (btnDelete) {
+          btnDelete.addEventListener('click', async () => {
+            if (await confirmDialog(
+              '⚠️ ADVERTENCIA: Borrado Permanente',
+              '¿Estás ABSOLUTAMENTE SEGURO de querer borrar a este cliente? Se eliminarán también TODOS los recibos de pagos asociados. Esta acción NO se puede deshacer.',
+              { confirmText: 'Sí, Borrar Permanentemente', confirmClass: 'btn-danger' }
+            )) {
+              try {
+                await deleteMember(member.id);
+                document.querySelector('.modal-close')?.click(); // Close the edit modal
+                showToast('Cliente borrado permanentemente', 'success');
+                navigate('#/members');
+              } catch (e) {
+                showToast('Error al borrar el cliente', 'error');
+              }
+            }
+          });
+        }
+      },
       onSubmit: async (body) => {
         const form = body.querySelector('#edit-member-form');
         if (!form.reportValidity()) return false;

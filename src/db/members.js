@@ -1,4 +1,5 @@
 import { supabase } from '../services/supabase.js';
+import { invalidateMemberPaymentCache } from './payments.js';
 
 let _memberCountCache = null;
 let _memberCountCacheTime = 0;
@@ -185,4 +186,27 @@ export async function getNewMembersCount(startDate, endDate) {
   
   _newMembersCache.set(cacheKey, count);
   return count;
+}
+
+/**
+ * Delete a member and all their associated payments.
+ */
+export async function deleteMember(id) {
+  // 1. Borrar pagos primero para evitar violación de llave foránea
+  const { error: payErr } = await supabase.from('payments').delete().eq('memberId', id);
+  if (payErr) {
+    console.error('Error deleting payments for member:', payErr);
+    throw payErr;
+  }
+
+  // 2. Borrar miembro
+  const { error: memErr } = await supabase.from('members').delete().eq('id', id);
+  if (memErr) {
+    console.error('Error deleting member:', memErr);
+    throw memErr;
+  }
+
+  invalidateMembersCache();
+  invalidateMemberPaymentCache();
+  return true;
 }

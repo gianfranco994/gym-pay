@@ -232,6 +232,35 @@ export async function getActiveMembers() {
 }
 
 /**
+ * Get inactive members (expired > X days, or never paid and created > X days ago).
+ * Returns array of member objects (with their latest payment info attached if exists).
+ */
+export async function getInactiveMembers(days) {
+  try {
+    const pairs = await getMembersWithLatestPaymentCached();
+    const limit = addDays(-days);
+
+    // 1. Members who paid but expired more than 'days' ago
+    const inactiveWithPayments = pairs.filter(({ payment }) => {
+      return new Date(payment.fechaVencimiento) < limit;
+    }).map(p => ({ ...p.member, latestPayment: p.payment }));
+
+    // 2. Members who NEVER paid and were created more than 'days' ago
+    const pairsMemberIds = new Set(pairs.map(p => p.member.id));
+    const { data: allMembers } = await supabase.from('members').select('*');
+    
+    const inactiveWithoutPayments = (allMembers || []).filter(m => {
+      return !pairsMemberIds.has(m.id) && new Date(m.createdAt) < limit;
+    }).map(m => ({ ...m, latestPayment: null }));
+
+    return [...inactiveWithPayments, ...inactiveWithoutPayments].sort((a,b) => a.nombre.localeCompare(b.nombre));
+  } catch (error) {
+    console.error('Error getting inactive members:', error);
+    return [];
+  }
+}
+
+/**
  * Get analytics for a specific month.
  */
 export async function getMonthlyAnalytics(month, year) {
