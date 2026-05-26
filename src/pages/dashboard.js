@@ -273,8 +273,8 @@ export async function render(container) {
   // ── 4. Charts ─────────────────────────────────────────────────────────────
 
   // Global Chart.js dark-theme defaults
-  Chart.defaults.color = 'hsl(228, 12%, 55%)';
-  Chart.defaults.borderColor = 'hsla(228, 15%, 30%, 0.4)';
+  Chart.defaults.color = 'hsl(270, 15%, 65%)';
+  Chart.defaults.borderColor = 'hsla(270, 20%, 30%, 0.4)';
 
   // Destroy previous chart instances to prevent memory leaks
   if (_chartIncome) { _chartIncome.destroy(); _chartIncome = null; }
@@ -292,7 +292,7 @@ export async function render(container) {
           {
             label: isUsd ? 'Ingresos USD' : 'Ingresos Bs',
             data: monthlyData.map((d) => (isUsd ? d.totalUsd : d.totalBs)),
-            backgroundColor: 'hsl(157, 78%, 48%)',
+            backgroundColor: 'hsl(275, 85%, 65%)',
             borderRadius: 6,
             maxBarThickness: 48,
           },
@@ -311,7 +311,7 @@ export async function render(container) {
               callback: (v) => (isUsd ? '$ ' + v : 'Bs ' + v),
             },
             grid: {
-              color: 'hsla(228, 15%, 30%, 0.4)',
+              color: 'hsla(270, 20%, 30%, 0.4)',
             },
           },
           x: {
@@ -336,7 +336,7 @@ export async function render(container) {
         datasets: [
           {
             data: hasData ? [pmCount, efCount] : [1, 1],
-            backgroundColor: ['hsl(262, 68%, 62%)', 'hsl(157, 78%, 48%)'],
+            backgroundColor: ['hsl(275, 85%, 65%)', 'hsl(190, 90%, 55%)'],
             borderWidth: 0,
             spacing: 4,
           },

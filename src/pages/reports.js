@@ -171,8 +171,8 @@ export async function render(container) {
           datasets: [{
             label: 'Ingresos (Bs)',
             data: trendData,
-            borderColor: 'hsl(157, 78%, 48%)',
-            backgroundColor: 'hsla(157, 78%, 48%, 0.1)',
+            borderColor: 'hsl(275, 85%, 65%)',
+            backgroundColor: 'hsla(275, 85%, 65%, 0.1)',
             borderWidth: 2,
             tension: 0.3,
             fill: true,
@@ -203,7 +203,7 @@ export async function render(container) {
           labels: ['Pago Móvil', 'Efectivo'],
           datasets: [{
             data: [pMovilCount, efectivoCount],
-            backgroundColor: ['hsl(157, 78%, 48%)', 'hsl(262, 68%, 62%)'],
+            backgroundColor: ['hsl(275, 85%, 65%)', 'hsl(190, 90%, 55%)'],
             borderWidth: 0
           }]
         },
@@ -227,13 +227,13 @@ export async function render(container) {
             {
               label: 'Pago Móvil',
               data: [analytics.byMethod.pagoMovil.total],
-              backgroundColor: 'hsl(157, 78%, 48%)',
+              backgroundColor: 'hsl(275, 85%, 65%)',
               borderRadius: 4
             },
             {
               label: 'Efectivo',
               data: [analytics.byMethod.efectivo.total],
-              backgroundColor: 'hsl(262, 68%, 62%)',
+              backgroundColor: 'hsl(190, 90%, 55%)',
               borderRadius: 4
             }
           ]

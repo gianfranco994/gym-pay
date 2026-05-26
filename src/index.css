@@ -5,39 +5,39 @@
 
 /* --- CSS Custom Properties --- */
 :root {
-  /* Backgrounds */
-  --bg-primary: hsl(228, 28%, 6%);
-  --bg-secondary: hsl(228, 22%, 10%);
-  --bg-elevated: hsl(228, 20%, 14%);
-  --bg-hover: hsl(228, 18%, 18%);
-  --bg-glass: hsla(228, 20%, 14%, 0.6);
-  --bg-glass-hover: hsla(228, 20%, 18%, 0.7);
-  --bg-overlay: hsla(228, 28%, 4%, 0.85);
+  /* Backgrounds (Deep Purple) */
+  --bg-primary: hsl(270, 40%, 6%);
+  --bg-secondary: hsl(270, 30%, 10%);
+  --bg-elevated: hsl(270, 25%, 15%);
+  --bg-hover: hsl(270, 30%, 20%);
+  --bg-glass: hsla(270, 25%, 12%, 0.65);
+  --bg-glass-hover: hsla(270, 30%, 18%, 0.75);
+  --bg-overlay: hsla(270, 40%, 4%, 0.85);
 
-  /* Accent Colors */
-  --accent-primary: hsl(157, 78%, 48%);
-  --accent-primary-hover: hsl(157, 78%, 42%);
-  --accent-glow: hsla(157, 78%, 48%, 0.15);
-  --accent-glow-strong: hsla(157, 78%, 48%, 0.3);
-  --accent-secondary: hsl(262, 68%, 62%);
-  --accent-secondary-hover: hsl(262, 68%, 55%);
-  --accent-secondary-glow: hsla(262, 68%, 62%, 0.15);
+  /* Accent Colors (Neon Purple / Cyan) */
+  --accent-primary: hsl(275, 85%, 65%);
+  --accent-primary-hover: hsl(275, 85%, 72%);
+  --accent-glow: hsla(275, 85%, 65%, 0.25);
+  --accent-glow-strong: hsla(275, 85%, 65%, 0.4);
+  --accent-secondary: hsl(190, 90%, 55%);
+  --accent-secondary-hover: hsl(190, 90%, 65%);
+  --accent-secondary-glow: hsla(190, 90%, 55%, 0.2);
 
   /* Text */
   --text-primary: hsl(0, 0%, 96%);
-  --text-secondary: hsl(228, 12%, 55%);
-  --text-muted: hsl(228, 10%, 40%);
-  --text-inverse: hsl(228, 28%, 6%);
+  --text-secondary: hsl(270, 15%, 65%);
+  --text-muted: hsl(270, 15%, 45%);
+  --text-inverse: hsl(270, 40%, 6%);
 
   /* Status */
-  --status-active: hsl(157, 78%, 48%);
-  --status-active-bg: hsla(157, 78%, 48%, 0.12);
-  --status-warning: hsl(40, 95%, 60%);
-  --status-warning-bg: hsla(40, 95%, 60%, 0.12);
-  --status-danger: hsl(0, 78%, 58%);
-  --status-danger-bg: hsla(0, 78%, 58%, 0.12);
-  --status-inactive: hsl(228, 10%, 35%);
-  --status-inactive-bg: hsla(228, 10%, 35%, 0.12);
+  --status-active: hsl(150, 80%, 50%);
+  --status-active-bg: hsla(150, 80%, 50%, 0.12);
+  --status-warning: hsl(40, 100%, 60%);
+  --status-warning-bg: hsla(40, 100%, 60%, 0.12);
+  --status-danger: hsl(340, 85%, 60%);
+  --status-danger-bg: hsla(340, 85%, 60%, 0.12);
+  --status-inactive: hsl(270, 10%, 35%);
+  --status-inactive-bg: hsla(270, 10%, 35%, 0.12);
 
   /* WhatsApp */
   --whatsapp: hsl(142, 70%, 45%);
@@ -45,9 +45,9 @@
   --whatsapp-bg: hsla(142, 70%, 45%, 0.12);
 
   /* Borders */
-  --border-subtle: hsla(228, 15%, 30%, 0.4);
-  --border-medium: hsla(228, 15%, 35%, 0.5);
-  --border-accent: hsla(157, 78%, 48%, 0.3);
+  --border-subtle: hsla(270, 20%, 30%, 0.4);
+  --border-medium: hsla(270, 20%, 35%, 0.5);
+  --border-accent: hsla(275, 85%, 65%, 0.3);
 
   /* Radius */
   --radius-xs: 6px;
@@ -101,12 +101,29 @@ html {
 }
 
 body {
-  font-family: var(--font-family);
   background-color: var(--bg-primary);
   color: var(--text-primary);
+  font-family: var(--font-family);
   line-height: 1.6;
   overflow: hidden;
   height: 100vh;
+  position: relative;
+  z-index: 0;
+}
+
+/* Ambient glow effect */
+body::before {
+  content: '';
+  position: fixed;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: 
+    radial-gradient(circle at 50% 30%, hsla(275, 85%, 65%, 0.05) 0%, transparent 40%),
+    radial-gradient(circle at 80% 80%, hsla(190, 90%, 55%, 0.04) 0%, transparent 40%);
+  z-index: -1;
+  pointer-events: none;
 }
 
 a {
