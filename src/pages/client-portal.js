@@ -106,7 +106,8 @@ export async function render(container) {
     btn.textContent = 'Buscando...';
 
     try {
-      const { data, error } = await supabase.from('members').select('*').eq('cedula', cedula).maybeSingle();
+      // SECURE: Use RPC to fetch exactly one member by cedula, preventing bulk data scraping
+      const { data, error } = await supabase.rpc('get_member_by_cedula', { p_cedula: cedula }).maybeSingle();
       
       if (error || !data) {
         showToast('Cédula no encontrada en el sistema', 'error');
